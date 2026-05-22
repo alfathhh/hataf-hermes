@@ -86,10 +86,13 @@ Di folder [`examples/`](examples/) ada file template yang tinggal lo copy:
 - [`examples/AGENTS.md`](examples/AGENTS.md) — project-level instruction
 - [`examples/config.yaml`](examples/config.yaml) — `~/.hermes/config.yaml` lengkap
 - [`examples/.env.example`](examples/.env.example) — template environment variables
-- [`examples/skills/research-citation/SKILL.md`](examples/skills/research-citation/SKILL.md)
-- [`examples/skills/pdf-summarize/SKILL.md`](examples/skills/pdf-summarize/SKILL.md)
-- [`examples/skills/video-summary/SKILL.md`](examples/skills/video-summary/SKILL.md)
-- [`examples/skills/web-scrape/SKILL.md`](examples/skills/web-scrape/SKILL.md)
+- [`examples/skills/research-citation/SKILL.md`](examples/skills/research-citation/SKILL.md) — riset dengan citation wajib
+- [`examples/skills/pdf-summarize/SKILL.md`](examples/skills/pdf-summarize/SKILL.md) — baca PDF + summary halaman
+- [`examples/skills/video-summary/SKILL.md`](examples/skills/video-summary/SKILL.md) — yt-dlp + Whisper + LLM
+- [`examples/skills/web-scrape/SKILL.md`](examples/skills/web-scrape/SKILL.md) — scraping schema-first
+- [`examples/skills/web-development/SKILL.md`](examples/skills/web-development/SKILL.md) — fullstack web dev (Next/Vue/Svelte/dst)
+- [`examples/skills/ui-ux/SKILL.md`](examples/skills/ui-ux/SKILL.md) — UI/UX review + design (WCAG, Material, HIG)
+- [`examples/skills/backend-proper/SKILL.md`](examples/skills/backend-proper/SKILL.md) — backend serius (security, idempotency, observability)
 
 ---
 

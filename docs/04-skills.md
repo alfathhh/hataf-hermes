@@ -210,7 +210,87 @@ Skill ini bilang ke agent:
 
 ---
 
-## 9. Browse skill dari registry public
+## 9. Skill development-focused (web dev, UI/UX, backend)
+
+3 skill tambahan untuk kerja real coding sehari-hari, semua sudah disiapin di `examples/skills/`:
+
+### `web-development` — Fullstack web development
+
+File: [`examples/skills/web-development/SKILL.md`](../examples/skills/web-development/SKILL.md).
+
+Skill yang ngepaksa agent:
+- **Stack discovery dulu** sebelum nulis kode (cek package.json, framework version, CSS approach, state management)
+- **Verify framework version** untuk anti-halu syntax (Next 14 vs 15, React 18 vs 19, Tailwind v3 vs v4)
+- **Plan sebelum execute** untuk task >3 file
+- **Type check + lint + build** sebelum claim "selesai"
+- **Match existing pattern** di project, jangan bikin abstraction baru kalau udah ada
+
+Install:
+
+```bash
+mkdir -p ~/.hermes/skills/web-development
+cp examples/skills/web-development/SKILL.md ~/.hermes/skills/web-development/
+```
+
+Pakai:
+
+```
+/web-development tambahin halaman /dashboard di project Next.js gw
+```
+
+### `ui-ux` — Review & design UI/UX
+
+File: [`examples/skills/ui-ux/SKILL.md`](../examples/skills/ui-ux/SKILL.md).
+
+Skill yang ngepaksa agent:
+- **Reference frame eksplisit**: WCAG 2.2, Material Design 3, Apple HIG, Refactoring UI book — bukan opini ngarang
+- **Konteks dulu** sebelum kritik (target user, primary task, constraint)
+- **Priority labels** (🔴 kritis a11y / 🟡 friction / 🟢 polish) — bukan single "fix all" list
+- **Trade-off jujur** kapan opsi A vs B masing-masing tepat
+- **Cheatsheet siap pakai** untuk spacing, type scale, color contrast, touch target
+
+Install:
+
+```bash
+mkdir -p ~/.hermes/skills/ui-ux
+cp examples/skills/ui-ux/SKILL.md ~/.hermes/skills/ui-ux/
+```
+
+Pakai:
+
+```
+/ui-ux review halaman login app gw, screenshot terlampir
+```
+
+### `backend-proper` — Backend serius
+
+File: [`examples/skills/backend-proper/SKILL.md`](../examples/skills/backend-proper/SKILL.md).
+
+Skill yang ngepaksa agent **disiplin engineering** untuk service yang lo deploy ke production:
+- **Spec eksplisit per endpoint** sebelum kode (auth, idempotency, response codes, side effects)
+- **Implementation checklist** auth/authz/validation/error/observability/idempotency/rate-limit/async/test/security
+- **Security default-deny** — sanitize error, never log secret/PII, parameterized query, dst
+- **Pitfall list** yang banyak dilanggar: N+1, transaction boundary, webhook unverified, ORM black box, microservices premature
+- **DB schema tips** (UUID v7, timestamptz, decimal money, indexing)
+
+Install:
+
+```bash
+mkdir -p ~/.hermes/skills/backend-proper
+cp examples/skills/backend-proper/SKILL.md ~/.hermes/skills/backend-proper/
+```
+
+Pakai:
+
+```
+/backend-proper bikin POST /api/v1/orders dengan idempotency, transaction, dan event publishing
+```
+
+> **Catatan jujur**: ketiga skill ini paling banyak masuk ke "best practice umum" yang gw kompres dari dokumentasi resmi (WCAG, framework docs) + common engineering wisdom. Untuk konteks lo yang spesifik (regulasi compliance, internal convention, performance constraint unik), edit SKILL.md masing-masing biar match. Skill yang generic sering harus di-tune untuk match reality project.
+
+---
+
+## 10. Browse skill dari registry public
 
 Hermes terintegrasi sama beberapa registry skill (dokumentasi: [Skills System](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills)):
 
@@ -236,7 +316,7 @@ hermes skills install official/security/1password
 
 ---
 
-## 10. Bikin skill custom dari scratch
+## 11. Bikin skill custom dari scratch
 
 Workflow yang gw rekomendasikan:
 
@@ -256,7 +336,7 @@ Hermes bakal `skill_manage(action="create", ...)` dan generate file SKILL.md.
 
 ---
 
-## 11. Kapan pake skill, kapan pake AGENTS.md
+## 12. Kapan pake skill, kapan pake AGENTS.md
 
 | Kebutuhan | Pake apa |
 |---|---|
@@ -269,7 +349,7 @@ Kuncinya: **skill itu prosedural**, **AGENTS.md itu deklaratif**.
 
 ---
 
-## 12. Yang gw belum yakin
+## 13. Yang gw belum yakin
 
 - **Token cost level 0 (skills_list)**: dokumentasi resmi sebut "~3k tokens" untuk meta-list semua skills. Kalau lo punya 50+ skill, level 0 ini bisa membengkak. **Belum gw verifikasi sendiri**. Mitigasi: kalau punya banyak skill, beberapa di-set `requires_toolsets` atau `fallback_for_toolsets` biar conditional, jadi gak semua muncul di list.
 - **Apakah skill bisa load model lain (cheap) untuk dirinya sendiri?** Skill bisa pake `delegate_task` untuk spawn subagent dengan model berbeda. Detail di doc 09.

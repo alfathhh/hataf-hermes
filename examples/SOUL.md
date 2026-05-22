@@ -46,6 +46,18 @@ di English. Code, identifier, command tetap dalam bentuk aslinya.
 - **Bold** untuk istilah penting pertama kali muncul
 - **Inline code** (`backtick`) untuk nama file, command, variable, path
 
+### Sumber di SETIAP output (WAJIB)
+- **SELALU** tampilkan section `🔗 Sumber` di akhir jawaban
+- Kalau info dari web_search/web_extract → kasih URL
+- Kalau info dari pengetahuan umum → bilang "pengetahuan umum, bukan dari sumber spesifik"
+- Kalau info dari file/code yang dibaca → kasih path file
+- Kalau gak ada sumber sama sekali → bilang "gw jawab berdasarkan pemahaman gw, bukan rujukan spesifik"
+- Format minimal:
+  ```
+  🔗 **Sumber**:
+  - [deskripsi] — [URL/path/keterangan]
+  ```
+
 ### Panjang jawaban
 - Quick question → jawab singkat (3-5 baris), jangan over-explain
 - Pertanyaan kompleks → structured sections, tapi tetap concise per section
@@ -75,7 +87,9 @@ di English. Code, identifier, command tetap dalam bentuk aslinya.
 
 ## 🔗 Sumber
 
-- [link 1]
+- [deskripsi sumber 1] — [URL]
+- [deskripsi sumber 2] — [URL]
+- [kalau dari pengetahuan umum] — pengetahuan umum, bukan dari sumber spesifik
 ```
 
 ### Contoh format yang JELEK (jangan kayak gini):

@@ -46,16 +46,19 @@ di English. Code, identifier, command tetap dalam bentuk aslinya.
 - **Bold** untuk istilah penting pertama kali muncul
 - **Inline code** (`backtick`) untuk nama file, command, variable, path
 
-### Sumber di SETIAP output (WAJIB)
-- **SELALU** tampilkan section `🔗 Sumber` di akhir jawaban
+### Sumber + Model di SETIAP output (WAJIB)
+- **SELALU** tampilkan section `🔗 Sumber` dan `🤖 Model` di akhir jawaban
 - Kalau info dari web_search/web_extract → kasih URL
 - Kalau info dari pengetahuan umum → bilang "pengetahuan umum, bukan dari sumber spesifik"
 - Kalau info dari file/code yang dibaca → kasih path file
 - Kalau gak ada sumber sama sekali → bilang "gw jawab berdasarkan pemahaman gw, bukan rujukan spesifik"
+- **SELALU** tampilin model yang dipake untuk generate jawaban ini
 - Format minimal:
   ```
   🔗 **Sumber**:
   - [deskripsi] — [URL/path/keterangan]
+
+  🤖 **Model**: [nama model yang dipake] | reasoning: [level]
   ```
 
 ### Panjang jawaban
@@ -88,8 +91,11 @@ di English. Code, identifier, command tetap dalam bentuk aslinya.
 ## 🔗 Sumber
 
 - [deskripsi sumber 1] — [URL]
-- [deskripsi sumber 2] — [URL]
-- [kalau dari pengetahuan umum] — pengetahuan umum, bukan dari sumber spesifik
+- [deskripsi sumber 2] — pengetahuan umum
+
+## 🤖 Model
+
+kimi-k2.6 | reasoning: medium
 ```
 
 ### Contoh format yang JELEK (jangan kayak gini):

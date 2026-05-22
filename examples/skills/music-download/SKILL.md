@@ -37,101 +37,92 @@ sudo apt install ffmpeg aria2
 
 ## Platform 1: YouTube (yt-dlp)
 
-### Audio
+### Audio — command simpel
 
 ```bash
-# MP3 320kbps (best YouTube can offer after transcode)
-yt-dlp -x --audio-format mp3 --audio-quality 0 -o "~/Music/YouTube/%(title)s.%(ext)s" "URL"
+# Lagu → MP3 (best quality dari YouTube)
+yt-dlp -x --audio-format mp3 --audio-quality 0 --embed-thumbnail --add-metadata -o "~/Music/%(title)s.%(ext)s" "URL"
 
-# Native quality (Opus ~160kbps — actual YouTube source)
-yt-dlp -x --audio-format opus -o "~/Music/YouTube/%(title)s.%(ext)s" "URL"
+# Lagu → Opus (native YouTube, file kecil, quality sama)
+yt-dlp -x -o "~/Music/%(title)s.%(ext)s" "URL"
 
-# FLAC container (still from lossy source — NOT true lossless)
-yt-dlp -x --audio-format flac -o "~/Music/YouTube/%(title)s.%(ext)s" "URL"
-
-# With metadata + thumbnail embedded
-yt-dlp -x --audio-format mp3 --audio-quality 0 --embed-thumbnail --add-metadata -o "~/Music/YouTube/%(title)s.%(ext)s" "URL"
+# Playlist → semua jadi MP3
+yt-dlp -x --audio-format mp3 --audio-quality 0 -o "~/Music/%(playlist_title)s/%(title)s.%(ext)s" "PLAYLIST_URL"
 ```
 
-### Video
+### Video — command simpel
 
 ```bash
-# Best quality
-yt-dlp -f "bestvideo+bestaudio" --merge-output-format mp4 -o "~/Videos/%(title)s.%(ext)s" "URL"
+# Video best quality
+yt-dlp -o "~/Videos/%(title)s.%(ext)s" "URL"
 
-# 4K
-yt-dlp -f "bestvideo[height<=2160]+bestaudio" --merge-output-format mp4 -o "~/Videos/%(title)s.%(ext)s" "URL"
+# Video 1080p (hemat storage)
+yt-dlp -f "bv[height<=1080]+ba" --merge-output-format mp4 -o "~/Videos/%(title)s.%(ext)s" "URL"
 
-# 1080p
-yt-dlp -f "bestvideo[height<=1080]+bestaudio" --merge-output-format mp4 -o "~/Videos/%(title)s.%(ext)s" "URL"
+# Video 720p (lebih hemat)
+yt-dlp -f "bv[height<=720]+ba" --merge-output-format mp4 -o "~/Videos/%(title)s.%(ext)s" "URL"
 
-# 720p (hemat storage)
-yt-dlp -f "bestvideo[height<=720]+bestaudio" --merge-output-format mp4 -o "~/Videos/%(title)s.%(ext)s" "URL"
-
-# Audio only dari video (tanpa video track)
-yt-dlp -x --audio-format mp3 -o "~/Music/YouTube/%(title)s.%(ext)s" "URL"
+# Playlist → video semua
+yt-dlp -o "~/Videos/%(playlist_title)s/%(title)s.%(ext)s" "PLAYLIST_URL"
 ```
 
-### Playlist
+### Speed boost
 
 ```bash
-# Playlist → MP3
-yt-dlp -x --audio-format mp3 --audio-quality 0 --embed-thumbnail --add-metadata \
-  -o "~/Music/YouTube/%(playlist_title)s/%(playlist_index)03d - %(title)s.%(ext)s" "PLAYLIST_URL"
-
-# Playlist → Video 1080p
-yt-dlp -f "bestvideo[height<=1080]+bestaudio" --merge-output-format mp4 \
-  -o "~/Videos/%(playlist_title)s/%(playlist_index)03d - %(title)s.%(ext)s" "PLAYLIST_URL"
-```
-
-### Speed up download
-
-```bash
-# Pakai aria2 (parallel download, lebih cepat)
-yt-dlp --downloader aria2c --downloader-args aria2c:"-x 16 -s 16" "URL"
+# Pake aria2 (download paralel, 5-10x lebih cepet)
+yt-dlp --downloader aria2c "URL"
 ```
 
 ### YouTube quality reality check
 
 | YouTube source | Actual quality | Notes |
 |---|---|---|
-| Opus (WebM) | ~160 kbps | Best audio YouTube has |
+| Opus (WebM) | ~160 kbps | Best audio YouTube punya |
 | AAC (M4A) | ~128 kbps | Fallback |
-| MP3 320 (transcoded) | File 320kbps, source 160 | Bigger file, NOT better quality |
-| FLAC (transcoded) | Lossless container, lossy source | NOT true lossless |
+| MP3 320 (transcoded) | File 320kbps, SOURCE 160 | Bigger file, NOT better quality |
+
+⚠️ **YouTube gak punya true lossless.** Max = ~160kbps Opus. Convert ke FLAC/320 = placebo (file besar, quality SAMA).
 
 ---
 
-## Platform 2: Tidal (tiddl)
+## Platform 2: Tidal (tiddl) — BEST quality option
 
-**WAJIB punya akun Tidal aktif.**
+**WAJIB punya akun Tidal aktif.** Lo bilang lo langganan — perfect.
 
-### Setup
+### Setup (sekali aja)
 
 ```bash
-# Login (buka browser OAuth)
-tiddl login
+tiddl login          # buka browser, OAuth login
 ```
 
-### Download
+### Quick commands
 
 ```bash
-# Track — auto quality sesuai subscription
-tiddl track "TIDAL_URL"
+# Track (auto best quality sesuai subscription lo)
+tiddl track "URL"
 
-# Quality options
-tiddl track --quality master "URL"      # MQA/FLAC 24-bit (HiFi Plus ONLY)
-tiddl track --quality lossless "URL"    # FLAC 16-bit/44.1kHz CD quality (HiFi)
+# Album lossless
+tiddl album --quality lossless "URL"
+
+# Playlist lossless
+tiddl playlist --quality lossless "URL"
+
+# Master quality (24-bit, HiFi Plus only)
+tiddl track --quality master "URL"
+```
+
+### Quality options
+
+```bash
+tiddl track --quality master "URL"      # 24-bit/192kHz FLAC (HiFi Plus)
+tiddl track --quality lossless "URL"    # 16-bit/44.1kHz FLAC CD quality (HiFi)
 tiddl track --quality high "URL"        # AAC 320kbps
 tiddl track --quality low "URL"         # AAC 96kbps
+```
 
-# Album
-tiddl album --quality lossless "TIDAL_ALBUM_URL"
+### Output folder
 
-# Playlist
-tiddl playlist --quality lossless "TIDAL_PLAYLIST_URL"
-
-# Custom output
+```bash
 tiddl track --quality lossless --output "~/Music/Tidal/" "URL"
 ```
 
@@ -143,17 +134,15 @@ tiddl track --quality lossless --output "~/Music/Tidal/" "URL"
 | HiFi Plus | HiRes | FLAC 24-bit | ~2500-4500 kbps |
 | HiFi | Lossless | FLAC 16-bit/44.1kHz | ~1411 kbps |
 | Any | High | AAC | 320 kbps |
-| Free | Low | AAC | 96 kbps |
 
-### Troubleshoot tiddl
+### Troubleshoot
 
 ```bash
-# Login expired
-tiddl logout && tiddl login
-
-# Cek subscription tier
-tiddl info
+tiddl logout && tiddl login    # kalau auth expired
+tiddl info                     # cek subscription tier lo
 ```
+
+**INI satu-satunya platform yang kasih TRUE LOSSLESS.** Kalau lo mau quality terbaik → selalu prefer Tidal.
 
 ---
 
@@ -161,56 +150,72 @@ tiddl info
 
 **Cara kerja**: metadata dari Spotify → match + download dari YouTube. BUKAN rip dari Spotify CDN.
 
-### Download
+### Quick commands (yang simpel)
 
 ```bash
 # Track
-spotdl "SPOTIFY_TRACK_URL"
+spotdl "URL"
 
 # Album
-spotdl "SPOTIFY_ALBUM_URL"
+spotdl "URL"
 
 # Playlist
-spotdl "SPOTIFY_PLAYLIST_URL"
+spotdl "URL"
 
-# Format options
-spotdl --format mp3 "URL"
-spotdl --format opus "URL"      # closest to YouTube native
-spotdl --format m4a "URL"
-spotdl --format flac "URL"      # NOT true lossless (YouTube source)
-
-# Bitrate
-spotdl --bitrate 320k "URL"     # still from ~160kbps source
-
-# Output template
-spotdl --output "~/Music/Spotify/{artist}/{album}/{title}.{output-ext}" "URL"
-
-# Liked songs
+# Liked songs (butuh auth sekali)
 spotdl --user-auth saved
 ```
 
-### Spotify quality honesty
+### Pilih format
 
-| What user thinks | Reality |
+```bash
+spotdl --format mp3 "URL"          # MP3
+spotdl --format opus "URL"         # Opus (best real quality)
+spotdl --format m4a "URL"          # M4A/AAC
+spotdl --output "~/Music/Spotify/{artist}/{album}/{title}.{output-ext}" "URL"
+```
+
+### Spotify quality — HARUS JUJUR ke user
+
+| Persepsi | Realita |
 |---|---|
-| "320kbps dari Spotify" | Source = YouTube ~160kbps, transcoded to 320 |
-| "FLAC lossless" | Lossless container, lossy YouTube source inside |
-| "Same as Spotify Premium" | NO — Premium = 320kbps OGG from Spotify CDN, spotdl ≠ that |
+| "320kbps dari Spotify" | Source = YouTube ~160kbps, di-transcode ke 320 (file besar, quality SAMA) |
+| "FLAC lossless" | Container lossless, isi lossy. BUKAN true lossless. |
+| "Sama kayak Spotify Premium" | BUKAN. Premium = 320kbps OGG dari CDN Spotify. spotdl = YouTube audio. |
 
-**Selalu jelaskan ini ke user.**
+**SELALU jelaskan ini ke user.** Jangan biarin mereka mikir dapet quality Spotify asli.
+
+### Kenapa gak bisa rip CDN Spotify langsung?
+
+Tools yang rip CDN Spotify (berbasis librespot) = **violate TOS Spotify**. Risiko:
+- Akun lo ke-ban permanent
+- Legal exposure (DMCA)
+
+Gw gak akan guide cara bypass DRM Spotify. Kalau lo mau quality asli Spotify → dengerin di app resmi (offline download mode di Premium udah 320kbps OGG).
+
+**Alternatif kalau mau lossless**: pake Tidal (true FLAC via tiddl).
 
 ---
 
 ## Platform 4: Apple Music
 
 ```
-❌ TIDAK BISA download secara legitimate tanpa bypass DRM.
+❌ TIDAK BISA download/rip secara legitimate tanpa bypass DRM.
 
-Alternatif:
-- Pakai fitur offline download di app Apple Music resmi
-- Beli track di iTunes Store (DRM-free AAC 256kbps)
-- Cari versi yang sama di YouTube (yt-dlp)
+Tools yang ada di internet untuk rip Apple Music = bypass FairPlay DRM = illegal
+di banyak jurisdiksi + violate TOS Apple → akun ke-ban.
 ```
+
+**Alternatif yang BISA lo lakuin**:
+
+| Opsi | Cara |
+|------|------|
+| Offline di app resmi | Apple Music app → download → dengerin offline (DRM-protected, gak bisa export) |
+| Beli di iTunes Store | DRM-free AAC 256kbps. Lo OWN file-nya. Bisa copy ke mana aja. |
+| Cari di YouTube | Banyak yang ada versi official. `yt-dlp` download. Quality ~160kbps. |
+| Cari di Tidal | Kalau lo juga langganan Tidal, lagu yang sama biasanya ada. Download FLAC lossless via tiddl. |
+
+**Rekomendasi gw**: kalau lo mau lossless yang bisa lo export → **Tidal via tiddl**. Itu satu-satunya yang legitimately kasih true FLAC tanpa DRM bypass.
 
 ---
 

@@ -1,48 +1,50 @@
 # ==============================================================================
-# Hermes Agent — config.yaml
+# Hermes Agent — config.yaml (BALANCED strategy, OpenCode Go only)
 # Lokasi: ~/.hermes/config.yaml
+#
+# Strategy: Kimi K2.6 (top quality) sebagai primary, DeepSeek V4 Flash (paling
+# irit) untuk smart routing + auxiliary. Total ~$11-13/bulan.
 #
 # Aturan: secrets (API key, token) MASUK KE .env. File ini cuma settings.
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# MODEL — primary
+# MODEL — primary (Kimi K2.6, top tier di OpenCode Go bundle)
 # ------------------------------------------------------------------------------
-# Setup: DeepSeek V4 Flash via custom OpenAI-compatible endpoint.
-# Endpoint & API key dibaca dari OPENAI_BASE_URL / OPENAI_API_KEY di .env.
+# Kimi K2.6: SWE-Bench Pro 58.6% — near Opus level.
+# Quota: 1,150 credits (terbatas). Smart routing WAJIB ON biar gak boros.
 model:
-  provider: custom
-  default: deepseek-v4-flash
-  base_url: https://api.deepseek.com/v1
-  context_length: 1000000   # 1M tokens — verifikasi di halaman model resmi DeepSeek
+  provider: opencode-go
+  default: kimi-k2.6
 
 # ------------------------------------------------------------------------------
-# FALLBACK MODEL — kalau primary error/rate-limit
+# FALLBACK MODEL — kalau K2.6 rate limit / error
 # ------------------------------------------------------------------------------
-# Switch otomatis sekali per session. Conversation tetap continue.
+# DeepSeek V4 Pro: strong model, quota 3,450 (lebih longgar dari K2.6).
+# Auto-switch kalau primary gagal. Conversation gak putus.
 fallback_model:
   provider: opencode-go
-  model: kimi-k2.6     # ganti sesuai bundle OpenCode Go yang available
+  model: deepseek-v4-pro
 
 # ------------------------------------------------------------------------------
-# SMART MODEL ROUTING — turn pendek/sederhana → cheap model
+# SMART MODEL ROUTING — turn pendek/sederhana → cheap model (WAJIB ON)
 # ------------------------------------------------------------------------------
-# Contoh: "halo" → ke Qwen3.5 Plus (murah)
-#         "tolong refactor ini" → tetap ke DeepSeek (primary)
+# Ini yang BIKIN lo hemat. 60-70% turn lo (halo, quick Q&A, translate, format)
+# ke DeepSeek V4 Flash (31,650 credits = PALING IRIT).
+# Cuma turn kompleks (coding, debug, analysis) yang ke primary K2.6.
 smart_model_routing:
   enabled: true
-  max_simple_chars: 160
-  max_simple_words: 28
+  max_simple_chars: 160         # < 160 karakter → cheap
+  max_simple_words: 28          # < 28 kata → cheap
   cheap_model:
     provider: opencode-go
-    model: qwen3.5-plus
+    model: deepseek-v4-flash    # 31,650 credits = paling irit di bundle
 
 # ------------------------------------------------------------------------------
 # AUXILIARY MODELS — task ringan di belakang layar
 # ------------------------------------------------------------------------------
-# Vision: pakai Gemini Flash via OpenRouter (paling reliable buat image analysis)
-# Web extract: pakai model murah-cepat (Qwen Plus dari OpenCode Go OK)
-# Approval classifier: model murah aja
+# Vision: HARUS dari OpenRouter (model OpenCode Go gak ada yang vision-capable)
+# Web extract & approval: model murah dari OpenCode Go, cukup adequate
 auxiliary:
   vision:
     provider: openrouter
@@ -50,27 +52,35 @@ auxiliary:
     timeout: 30
   web_extract:
     provider: opencode-go
-    model: qwen3.5-plus
+    model: qwen3.5-plus           # 10,200 credits, adequate buat extract teks
   approval:
     provider: opencode-go
-    model: qwen3.5-plus
+    model: deepseek-v4-flash      # 31,650 credits, binary classify doang
 
 # ------------------------------------------------------------------------------
 # CONTEXT COMPRESSION — kompres conversation lama otomatis
 # ------------------------------------------------------------------------------
-# Compress kalau context udah 50% penuh, summarize pakai model murah.
+# Pake model paling irit (V4 Flash). Task-nya cuma summarize, gak perlu pinter.
 compression:
   enabled: true
-  threshold: 0.50
+  threshold: 0.50                 # compress saat 50% context penuh
   summary_provider: opencode-go
-  summary_model: qwen3.5-plus
+  summary_model: deepseek-v4-flash
 
 # ------------------------------------------------------------------------------
-# REASONING EFFORT — defaultnya "medium". Naikkan kalau model utama support thinking.
+# REASONING EFFORT — default medium. Naikkan kalau butuh deep thinking.
 # ------------------------------------------------------------------------------
 agent:
-  reasoning_effort: ""       # kosong = medium. opsi: xhigh / high / medium / low / minimal / none
-  max_turns: 90              # max iteration per turn
+  reasoning_effort: ""            # kosong = medium. opsi: xhigh/high/medium/low/minimal/none
+  max_turns: 90                   # max iteration per turn
+
+# ------------------------------------------------------------------------------
+# DELEGATION — subagent pakai model balance (bukan primary, bukan paling murah)
+# ------------------------------------------------------------------------------
+# Qwen3.6 Plus: 3,300 credits. Good balance quality/cost buat narrow subtask.
+delegation:
+  provider: opencode-go
+  model: qwen3.6-plus
 
 # ------------------------------------------------------------------------------
 # MEMORY — limit konservatif, biar system prompt tetap kecil
@@ -78,32 +88,29 @@ agent:
 memory:
   memory_enabled: true
   user_profile_enabled: true
-  memory_char_limit: 2200    # ~800 tokens
-  user_char_limit: 1375      # ~500 tokens
+  memory_char_limit: 2200         # ~800 tokens
+  user_char_limit: 1375           # ~500 tokens
 
 # ------------------------------------------------------------------------------
 # WEB SEARCH BACKEND — default: firecrawl (paling lengkap)
 # ------------------------------------------------------------------------------
 web:
-  backend: firecrawl         # opsi: firecrawl | parallel | tavily
+  backend: firecrawl              # opsi: firecrawl | parallel | tavily
 
 # ------------------------------------------------------------------------------
-# TERMINAL BACKEND — default: local. Pakai docker untuk isolasi penuh.
+# TERMINAL BACKEND — default: local
 # ------------------------------------------------------------------------------
 terminal:
-  backend: local             # opsi: local | docker | ssh | singularity | modal | daytona
+  backend: local
   cwd: "."
   timeout: 180
-  persistent_shell: true     # state (cd, env vars) persist antar command (untuk SSH default true)
+  persistent_shell: true
 
 # ------------------------------------------------------------------------------
 # APPROVALS — kontrol command bahaya
 # ------------------------------------------------------------------------------
-# 'manual' = selalu tanya user untuk command flagged bahaya
-# 'smart'  = pakai LLM auxiliary buat klasifikasi, low-risk auto-approve
-# 'off'    = NO checks (sangat berbahaya, cuma kalau lo full sandbox)
 approvals:
-  mode: manual
+  mode: manual                    # manual | smart | off
 
 # ------------------------------------------------------------------------------
 # CHECKPOINTS — snapshot otomatis sebelum operasi destruktif
@@ -116,16 +123,15 @@ checkpoints:
 # DISPLAY — TUI behavior
 # ------------------------------------------------------------------------------
 display:
-  tool_progress: all         # off | new | all | verbose
+  tool_progress: all
   compact: false
-  show_cost: true            # tampilkan estimasi $ di status bar
-  bell_on_complete: true     # bel terminal kalau task selesai
-  show_reasoning: false      # set true kalau lo mau liat thinking model
+  show_cost: true                 # tampilkan estimasi $ di status bar
+  bell_on_complete: true
+  show_reasoning: false
 
 # ------------------------------------------------------------------------------
 # QUICK COMMANDS — shell shortcut tanpa LLM (zero token)
 # ------------------------------------------------------------------------------
-# Ini bisa lo panggil di chat (CLI/Telegram) tanpa nge-burn token LLM
 quick_commands:
   status:
     type: exec
@@ -141,7 +147,7 @@ quick_commands:
     command: hermes update
 
 # ------------------------------------------------------------------------------
-# STREAMING — token stream ke Telegram (perasaan jawab cepet)
+# STREAMING — token stream ke Telegram
 # ------------------------------------------------------------------------------
 streaming:
   enabled: true
@@ -150,26 +156,17 @@ streaming:
   buffer_threshold: 40
 
 # ------------------------------------------------------------------------------
-# PRIVACY — redact PII dari LLM context (gateway only)
+# PRIVACY
 # ------------------------------------------------------------------------------
 privacy:
-  redact_pii: false          # set true kalau lo paranoid soal PII di logs
+  redact_pii: false
 
 # ------------------------------------------------------------------------------
 # UNAUTHORIZED DM BEHAVIOR
 # ------------------------------------------------------------------------------
-# 'pair' = orang asing dapat pairing code untuk request akses (default)
-# 'ignore' = silently drop pesan dari unauthorized users
 unauthorized_dm_behavior: pair
 
 # ------------------------------------------------------------------------------
 # GROUP CHAT — sesi per user (recommended)
 # ------------------------------------------------------------------------------
 group_sessions_per_user: true
-
-# ------------------------------------------------------------------------------
-# DELEGATION — kalau Hermes spawn subagent, pake model murah
-# ------------------------------------------------------------------------------
-delegation:
-  provider: opencode-go
-  model: qwen3.6-plus

@@ -1,0 +1,20 @@
+# Secrets — JANGAN PERNAH commit ini
+.env
+.env.local
+*.key
+*.pem
+
+# Hermes data lokal
+.hermes/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Output / temp
+/tmp/
+*.log

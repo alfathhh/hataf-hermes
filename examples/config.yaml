@@ -1,0 +1,175 @@
+# ==============================================================================
+# Hermes Agent — config.yaml
+# Lokasi: ~/.hermes/config.yaml
+#
+# Aturan: secrets (API key, token) MASUK KE .env. File ini cuma settings.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# MODEL — primary
+# ------------------------------------------------------------------------------
+# Setup: DeepSeek V4 Flash via custom OpenAI-compatible endpoint.
+# Endpoint & API key dibaca dari OPENAI_BASE_URL / OPENAI_API_KEY di .env.
+model:
+  provider: custom
+  default: deepseek-v4-flash
+  base_url: https://api.deepseek.com/v1
+  context_length: 1000000   # 1M tokens — verifikasi di halaman model resmi DeepSeek
+
+# ------------------------------------------------------------------------------
+# FALLBACK MODEL — kalau primary error/rate-limit
+# ------------------------------------------------------------------------------
+# Switch otomatis sekali per session. Conversation tetap continue.
+fallback_model:
+  provider: opencode-go
+  model: kimi-k2.6     # ganti sesuai bundle OpenCode Go yang available
+
+# ------------------------------------------------------------------------------
+# SMART MODEL ROUTING — turn pendek/sederhana → cheap model
+# ------------------------------------------------------------------------------
+# Contoh: "halo" → ke Qwen3.5 Plus (murah)
+#         "tolong refactor ini" → tetap ke DeepSeek (primary)
+smart_model_routing:
+  enabled: true
+  max_simple_chars: 160
+  max_simple_words: 28
+  cheap_model:
+    provider: opencode-go
+    model: qwen3.5-plus
+
+# ------------------------------------------------------------------------------
+# AUXILIARY MODELS — task ringan di belakang layar
+# ------------------------------------------------------------------------------
+# Vision: pakai Gemini Flash via OpenRouter (paling reliable buat image analysis)
+# Web extract: pakai model murah-cepat (Qwen Plus dari OpenCode Go OK)
+# Approval classifier: model murah aja
+auxiliary:
+  vision:
+    provider: openrouter
+    model: google/gemini-2.5-flash
+    timeout: 30
+  web_extract:
+    provider: opencode-go
+    model: qwen3.5-plus
+  approval:
+    provider: opencode-go
+    model: qwen3.5-plus
+
+# ------------------------------------------------------------------------------
+# CONTEXT COMPRESSION — kompres conversation lama otomatis
+# ------------------------------------------------------------------------------
+# Compress kalau context udah 50% penuh, summarize pakai model murah.
+compression:
+  enabled: true
+  threshold: 0.50
+  summary_provider: opencode-go
+  summary_model: qwen3.5-plus
+
+# ------------------------------------------------------------------------------
+# REASONING EFFORT — defaultnya "medium". Naikkan kalau model utama support thinking.
+# ------------------------------------------------------------------------------
+agent:
+  reasoning_effort: ""       # kosong = medium. opsi: xhigh / high / medium / low / minimal / none
+  max_turns: 90              # max iteration per turn
+
+# ------------------------------------------------------------------------------
+# MEMORY — limit konservatif, biar system prompt tetap kecil
+# ------------------------------------------------------------------------------
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+  memory_char_limit: 2200    # ~800 tokens
+  user_char_limit: 1375      # ~500 tokens
+
+# ------------------------------------------------------------------------------
+# WEB SEARCH BACKEND — default: firecrawl (paling lengkap)
+# ------------------------------------------------------------------------------
+web:
+  backend: firecrawl         # opsi: firecrawl | parallel | tavily
+
+# ------------------------------------------------------------------------------
+# TERMINAL BACKEND — default: local. Pakai docker untuk isolasi penuh.
+# ------------------------------------------------------------------------------
+terminal:
+  backend: local             # opsi: local | docker | ssh | singularity | modal | daytona
+  cwd: "."
+  timeout: 180
+  persistent_shell: true     # state (cd, env vars) persist antar command (untuk SSH default true)
+
+# ------------------------------------------------------------------------------
+# APPROVALS — kontrol command bahaya
+# ------------------------------------------------------------------------------
+# 'manual' = selalu tanya user untuk command flagged bahaya
+# 'smart'  = pakai LLM auxiliary buat klasifikasi, low-risk auto-approve
+# 'off'    = NO checks (sangat berbahaya, cuma kalau lo full sandbox)
+approvals:
+  mode: manual
+
+# ------------------------------------------------------------------------------
+# CHECKPOINTS — snapshot otomatis sebelum operasi destruktif
+# ------------------------------------------------------------------------------
+checkpoints:
+  enabled: true
+  max_snapshots: 50
+
+# ------------------------------------------------------------------------------
+# DISPLAY — TUI behavior
+# ------------------------------------------------------------------------------
+display:
+  tool_progress: all         # off | new | all | verbose
+  compact: false
+  show_cost: true            # tampilkan estimasi $ di status bar
+  bell_on_complete: true     # bel terminal kalau task selesai
+  show_reasoning: false      # set true kalau lo mau liat thinking model
+
+# ------------------------------------------------------------------------------
+# QUICK COMMANDS — shell shortcut tanpa LLM (zero token)
+# ------------------------------------------------------------------------------
+# Ini bisa lo panggil di chat (CLI/Telegram) tanpa nge-burn token LLM
+quick_commands:
+  status:
+    type: exec
+    command: systemctl status hermes-agent.service 2>/dev/null || echo "Service not found"
+  disk:
+    type: exec
+    command: df -h /
+  uptime:
+    type: exec
+    command: uptime
+  hermes_update:
+    type: exec
+    command: hermes update
+
+# ------------------------------------------------------------------------------
+# STREAMING — token stream ke Telegram (perasaan jawab cepet)
+# ------------------------------------------------------------------------------
+streaming:
+  enabled: true
+  transport: edit
+  edit_interval: 0.3
+  buffer_threshold: 40
+
+# ------------------------------------------------------------------------------
+# PRIVACY — redact PII dari LLM context (gateway only)
+# ------------------------------------------------------------------------------
+privacy:
+  redact_pii: false          # set true kalau lo paranoid soal PII di logs
+
+# ------------------------------------------------------------------------------
+# UNAUTHORIZED DM BEHAVIOR
+# ------------------------------------------------------------------------------
+# 'pair' = orang asing dapat pairing code untuk request akses (default)
+# 'ignore' = silently drop pesan dari unauthorized users
+unauthorized_dm_behavior: pair
+
+# ------------------------------------------------------------------------------
+# GROUP CHAT — sesi per user (recommended)
+# ------------------------------------------------------------------------------
+group_sessions_per_user: true
+
+# ------------------------------------------------------------------------------
+# DELEGATION — kalau Hermes spawn subagent, pake model murah
+# ------------------------------------------------------------------------------
+delegation:
+  provider: opencode-go
+  model: qwen3.6-plus

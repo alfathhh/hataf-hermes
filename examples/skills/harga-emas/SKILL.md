@@ -1,7 +1,7 @@
 ---
 name: harga-emas
-description: Ambil harga emas Antam HANYA dari logammulia.com (official). JANGAN pakai sumber lain. Extract harga jual dan buyback terkini.
-version: 1.0.0
+description: Ambil harga emas Antam HANYA dari logammulia.com (official). JANGAN pakai sumber lain.
+version: 2.0.0
 metadata:
   hermes:
     tags: [emas, gold, antam, logammulia, price-monitor]
@@ -9,66 +9,66 @@ metadata:
     requires_toolsets: [web]
 ---
 
-# Harga Emas Antam (logammulia.com ONLY)
+# Harga Emas Antam
 
-## ATURAN MUTLAK
+## ATURAN MUTLAK (NON-NEGOTIABLE)
 
-**SUMBER TUNGGAL**: https://www.logammulia.com/id/harga-emas-702
+```
+SUMBER: https://www.logammulia.com/id/harga-emas-702
+TOOL: web_extract (LANGSUNG ke URL di atas)
 
-JANGAN PERNAH:
-- Pakai web_search untuk cari "harga emas" (ini yang bikin lo nyasar ke harga-emas.com)
-- Ambil data dari situs lain (harga-emas.com, goldprice.org, dll)
-- Ngarang harga kalau extraction gagal
+DO NOT: web_search("harga emas")
+DO NOT: ambil data dari harga-emas.com atau situs lain
+DO NOT: ngarang harga kalau extraction gagal
+DO NOT: fallback ke sumber lain
 
-KALAU logammulia.com GAGAL di-extract: bilang "Gagal mengakses logammulia.com" dan STOP. Jangan fallback ke sumber lain.
+IF logammulia.com GAGAL → bilang "Gagal mengakses logammulia.com" dan STOP
+```
 
-## When to Use
+---
 
-- User nanya harga emas Antam hari ini
-- Cronjob monitor harga emas harian
-- Alert kalau harga turun/naik dari threshold
+## PROCEDURE (ikuti exact)
 
-## Procedure
-
-### 1. Fetch langsung (TANPA search)
+### Step 1: Fetch langsung (TANPA search)
 
 ```python
-# LANGSUNG extract URL spesifik — BUKAN web_search
-result = web_extract(
+web_extract(
     url="https://www.logammulia.com/id/harga-emas-702",
-    prompt="Extract tabel harga emas Antam. Ambil: tanggal update, harga jual per gram (1g, 5g, 10g, 25g, 50g, 100g, 250g, 500g, 1000g), dan harga buyback. Format semua harga dalam Rupiah."
+    prompt="Extract tabel harga emas Antam. Ambil: tanggal update, harga jual per gram (1g, 5g, 10g, 25g, 50g, 100g), dan harga buyback. Format semua harga dalam Rupiah."
 )
 ```
 
-JANGAN pakai `web_search("harga emas antam")` — itu yang bikin lo nyasar.
+### Step 2: Decision tree kalau gagal
 
-### 2. Kalau web_extract gagal
-
-Kemungkinan: halaman JS-heavy, Cloudflare block, atau struktur berubah.
-
-Fallback **tetap di logammulia.com**:
-
-```python
-# Fallback: pakai browser tool
-browser_navigate(url="https://www.logammulia.com/id/harga-emas-702")
-browser_screenshot()
-# Lalu vision_analyze screenshot untuk baca harga
+```
+IF web_extract return data → lanjut Step 3
+IF web_extract return kosong / error:
+  → coba browser_navigate("https://www.logammulia.com/id/harga-emas-702")
+  → browser_screenshot()
+  → vision_analyze screenshot
+  IF masih gagal → output "⚠️ Gagal ambil harga emas dari logammulia.com" dan STOP
+  DO NOT: cari sumber lain
+  DO NOT: ngarang angka
 ```
 
-JANGAN fallback ke situs lain. Lebih baik output "gagal extract" daripada data dari sumber yang salah.
+### Step 3: Validasi output
 
-### 3. Validasi output
+```
+CHECK: tanggal update = hari ini atau kemarin? (kalau jauh = stale)
+CHECK: harga per gram dalam range Rp 1.000.000 - Rp 5.000.000? (range wajar 2026)
+  IF harga < Rp 100.000 → extraction salah, JANGAN deliver
+  IF harga > Rp 10.000.000 → extraction salah, JANGAN deliver
+CHECK: ada "Rp" prefix? Strip untuk angka comparison
+```
 
-Setelah extract, cek:
+### Step 4: Format output
 
-- Apakah tanggal update = hari ini atau kemarin? (kalau jauh lebih lama, mungkin data stale / extraction salah)
-- Apakah harga dalam range masuk akal? (per Mei 2026, harga emas Antam ~Rp 1-2 juta/gram — angka ini PASTI berubah, tapi kalau result < Rp 100.000 atau > Rp 10.000.000 per gram, jelas salah extraction)
-- Apakah ada "Rp" prefix di angka? Strip dan convert ke integer untuk perbandingan
+---
 
-### 4. Format output
+## OUTPUT TEMPLATE
 
 ```markdown
-## Harga Emas Antam — [TANGGAL]
+## 🪙 Harga Emas Antam — [TANGGAL dari halaman]
 
 **Sumber**: https://www.logammulia.com/id/harga-emas-702
 **Diakses**: [timestamp sekarang]
@@ -87,69 +87,75 @@ Setelah extract, cek:
 Rp X.XXX.XXX /gram
 
 ### Perubahan vs kemarin
-[Kalau ada data kemarin di state file, hitung delta. Kalau gak ada, skip.]
+[IF ada data kemarin di state file → hitung delta]
+[IF gak ada → "Data kemarin tidak tersedia"]
 ```
 
-## Untuk Cronjob
+---
 
-Contoh prompt cron yang BENAR:
+## CONTOH OUTPUT
+
+```markdown
+## 🪙 Harga Emas Antam — 24 Mei 2026
+
+**Sumber**: https://www.logammulia.com/id/harga-emas-702
+**Diakses**: 24 Mei 2026, 10:30 WIB
+
+### Harga Jual (per batang)
+| Gram | Harga |
+|------|-------|
+| 1g   | Rp 1.875.000 |
+| 5g   | Rp 9.125.000 |
+| 10g  | Rp 18.100.000 |
+| 25g  | Rp 45.000.000 |
+| 50g  | Rp 89.750.000 |
+| 100g | Rp 179.250.000 |
+
+### Harga Buyback
+Rp 1.773.000 /gram
+
+### Perubahan vs kemarin
+Jual 1g: +Rp 12.000 (+0.64%)
+Buyback: +Rp 10.000 (+0.57%)
+```
+
+---
+
+## UNTUK CRONJOB
+
+Prompt cron yang BENAR:
 
 ```
-Ambil harga emas Antam hari ini HANYA dari https://www.logammulia.com/id/harga-emas-702 menggunakan web_extract langsung ke URL tersebut, JANGAN web_search. Extract harga jual 1g dan harga buyback. Bandingkan dengan file ~/.hermes/cron/output/harga-emas/last.json. Kalau harga berubah >1% dari kemarin, kirim ke Telegram dengan format: "🪙 Emas Antam [tanggal]: Jual 1g Rp X | Buyback Rp Y | [naik/turun X%]". Update last.json. Kalau sama, silent (gak kirim apa-apa). Kalau gagal extract, kirim: "⚠️ Gagal ambil harga emas dari logammulia.com".
+CRITICAL: Do NOT use web_search. Use web_extract with this exact URL: https://www.logammulia.com/id/harga-emas-702
+
+Steps:
+1. web_extract URL di atas, extract harga jual 1g dan buyback
+2. Baca file ~/.hermes/cron/output/harga-emas/last.json
+3. IF harga berubah >1% dari kemarin → kirim Telegram: "🪙 Emas Antam [tanggal]: Jual 1g Rp X | Buyback Rp Y | [naik/turun X%]"
+4. IF harga sama → DIAM (jangan kirim)
+5. IF gagal extract → kirim: "⚠️ Gagal ambil harga emas dari logammulia.com"
+6. Update last.json dengan data baru
 ```
 
-Kunci yang bikin ini jalan:
-1. URL eksplisit (bukan query search)
-2. Tool eksplisit (`web_extract`, bukan `web_search`)
-3. Instruksi "JANGAN" yang tegas
-4. Fallback behavior jelas (gagal = bilang gagal, bukan cari sumber lain)
-5. Silent success (gak spam Telegram kalau gak ada perubahan)
-
-## Pitfalls
-
-### Pitfall 1: Agent tetap web_search walaupun disuruh jangan
-
-Kalau ini terjadi, kemungkinan:
-- Prompt cron terlalu ambigu → perjelas "LANGSUNG web_extract ke URL ini"
-- Model cheap (yang dipake cron) gak cukup pinter follow instruction → ganti model cron ke yang lebih kuat
-
-Fix: di config.yaml, pastikan cron gak didowngrade ke model terlalu lemah. Atau, tambah di awal prompt: "CRITICAL: Do NOT use web_search. Use web_extract with this exact URL."
-
-### Pitfall 2: Struktur HTML logammulia.com berubah
-
-Situs jualan sering redesign. Kalau extraction mulai gagal (return kosong / harga aneh), lo perlu:
-1. Manual cek halaman di browser
-2. Update prompt `web_extract` dengan schema baru
-3. Atau switch ke browser+screenshot+vision approach
-
-### Pitfall 3: Cloudflare block
-
-logammulia.com mungkin pake anti-bot. Kalau `web_extract` selalu gagal:
-- Coba `browser_navigate` (simulate real browser)
-- Atau kalau pake self-hosted Firecrawl, Playwright fallback aktif
-
-### Pitfall 4: Harga yang ditampilkan = harga member
-
-logammulia.com kadang nampilkan harga berbeda untuk member vs non-member. Pastikan yang diextract adalah harga **non-member** (harga umum) kecuali user eksplisit bilang dia member.
-
-## State file (untuk tracking perubahan)
-
-Simpan di `~/.hermes/cron/output/harga-emas/last.json`:
-
+State file (`~/.hermes/cron/output/harga-emas/last.json`):
 ```json
 {
-  "date": "2026-05-22",
-  "sell_1g": 1850000,
-  "buyback": 1750000,
+  "date": "2026-05-24",
+  "sell_1g": 1875000,
+  "buyback": 1773000,
   "source": "https://www.logammulia.com/id/harga-emas-702"
 }
 ```
 
-Cron job compare harga baru vs file ini untuk detect perubahan.
+---
 
-## Verification
+## VERIFICATION
 
-1. Apakah sumber yang dikutip = logammulia.com? (BUKAN harga-emas.com atau lainnya)
-2. Apakah tanggal update masuk akal?
-3. Apakah angka harga dalam range wajar?
-4. Apakah ada fallback ke sumber lain yang SEHARUSNYA tidak terjadi?
+```
+□ Sumber yang dikutip = logammulia.com? (BUKAN harga-emas.com)
+□ Tanggal update masuk akal?
+□ Angka harga dalam range wajar?
+□ Gak ada fallback ke sumber lain?
+
+IF ada □ TIDAK → STOP, jangan deliver
+```

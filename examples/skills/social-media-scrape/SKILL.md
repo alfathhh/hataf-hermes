@@ -1,7 +1,7 @@
 ---
 name: social-media-scrape
-description: Scrape data publik dari Instagram, X (Twitter), dan Facebook. Extract posts, profile info, media. Pakai tools legitimate (instaloader, gallery-dl, yt-dlp). Cuma data PUBLIK — gak bypass private account.
-version: 1.0.0
+description: Scrape data publik dari Instagram, X (Twitter), Facebook, TikTok. Cuma data PUBLIK, gak bypass private account.
+version: 2.0.0
 metadata:
   hermes:
     tags: [scrape, instagram, twitter, x, facebook, social-media]
@@ -11,316 +11,206 @@ metadata:
 
 # Social Media Scrape
 
-Skill untuk scrape data publik dari Instagram, X (Twitter), dan Facebook. 
-
-## ⚠️ ATURAN KERAS
-
-- **CUMA data PUBLIK** — gak bypass private account
-- **Gak login ke akun orang lain** — kalau butuh login, pake akun USER sendiri
-- **Gak mass-scrape** tanpa purpose jelas (jangan scrape 10.000 profile random)
-- **Respect rate limit** — delay antar request
-- **Gak untuk stalking / harassment** — kalau intent user jelas buat nge-stalk individu, refuse
-
-## Prerequisites
-
-```bash
-pip install --upgrade instaloader gallery-dl yt-dlp snscrape
-```
-
-## When to Use
-
-- "Download semua foto dari Instagram @username"
-- "Scrape tweets dari @handle tentang topik X"
-- "Ambil profile info Instagram @username"
-- "Download video dari post Facebook publik"
-- "Monitor mention brand di Twitter"
-
----
-
-## Platform 1: Instagram
-
-### Tool: `instaloader`
-
-⚠️ Instagram makin restrictive di 2026. Login mungkin diperlukan untuk akses lebih dari beberapa profile.
-
-### Quick commands
-
-```bash
-# Download semua post dari profile publik
-instaloader profile username
-
-# Download post terbaru (last 10)
-instaloader profile username --count 10
-
-# Download cuma foto (skip video)
-instaloader profile username --no-videos
-
-# Download stories (butuh login)
-instaloader --login your_username --stories username
-
-# Download highlight (butuh login)
-instaloader --login your_username :stories username
-
-# Download dengan metadata (caption, timestamp, likes)
-instaloader profile username --no-compress-json
-```
-
-### Login (kalau diperlukan)
-
-```bash
-# Login sekali, session di-cache
-instaloader --login your_username
-
-# Atau lewat session file
-instaloader --login your_username --sessionfile ~/.config/instaloader/session-your_username
-```
-
-⚠️ **Pakai akun lo sendiri.** Instagram bisa rate-limit atau ban sementara kalau terlalu agresif.
-
-### Extract profile info (tanpa download media)
-
-```bash
-instaloader profile username --no-pictures --no-videos --no-video-thumbnails --metadata-json
-```
-
-Output JSON: followers, following, bio, external URL, post count.
-
-### Output folder
+## ATURAN KERAS (NON-NEGOTIABLE)
 
 ```
-username/
-├── 2026-05-20_12-30-00_UTC.jpg
-├── 2026-05-20_12-30-00_UTC.json   (metadata)
-├── 2026-05-18_09-15-00_UTC.mp4
-└── ...
+DO: scrape data PUBLIK saja
+DO NOT: bypass private account
+DO NOT: login ke akun orang lain
+DO NOT: mass-scrape tanpa purpose jelas
+DO NOT: scrape untuk stalking / harassment
+
+IF intent user jelas stalking → REFUSE
+IF profile private → bilang "profile private, gak bisa" dan STOP
 ```
 
 ---
 
-## Platform 2: X (Twitter)
+## KAPAN PAKAI
 
-### Tool: `gallery-dl` atau `yt-dlp`
-
-Twitter/X sering berubah API. Tools yang kerja hari ini bisa gagal besok.
-
-### Quick commands — gallery-dl
-
-```bash
-# Download semua media dari timeline user
-gallery-dl "https://x.com/username"
-
-# Download media dari 1 tweet
-gallery-dl "https://x.com/username/status/123456789"
-
-# Download dengan metadata
-gallery-dl --write-metadata "https://x.com/username"
-
-# Filter: cuma gambar
-gallery-dl --filter "extension in ('jpg', 'png')" "https://x.com/username"
 ```
-
-### Quick commands — yt-dlp (untuk video)
-
-```bash
-# Download video dari tweet
-yt-dlp "https://x.com/username/status/123456789"
-
-# Download semua video dari timeline (recent)
-yt-dlp "https://x.com/username/media"
-```
-
-### Scrape teks tweet (tanpa media)
-
-```bash
-# Pakai snscrape (kalau masih jalan di 2026 — cek dulu)
-snscrape --jsonl twitter-user username > tweets.json
-
-# Atau web_search sebagai fallback
-```
-
-⚠️ **snscrape mungkin udah gak jalan** karena X/Twitter sering block scraper. Test dulu. Kalau gagal, pakai `web_extract` ke tweet URL langsung.
-
-### Twitter auth (kalau diperlukan)
-
-```bash
-# gallery-dl pakai cookies
-gallery-dl --cookies-from-browser firefox "https://x.com/username"
-
-# Atau export cookies manual
-gallery-dl --cookies ~/cookies-twitter.txt "https://x.com/username"
+IF user minta download foto/video dari IG/X/TikTok public → PAKAI
+IF user minta scrape tweets dari @handle → PAKAI
+IF user minta profile info publik → PAKAI
+IF user minta monitor brand mention → PAKAI
+IF target = private account → JANGAN
+IF intent = stalking → JANGAN (refuse)
 ```
 
 ---
 
-## Platform 3: Facebook
+## PROCEDURE (ikuti exact)
 
-### ⚠️ Facebook = paling susah
+### Step 1: Klarifikasi
 
-Facebook anti-scrape paling agresif. Hampir semua tools butuh login + sering ke-block.
+```
+TANYA:
+1. "Platform mana?" (IG / X / Facebook / TikTok)
+2. "Username/URL target?"
+3. "Mau apa?" (media / teks post / profile info / semua)
+4. "Berapa banyak?" (last 10 / semua / date range)
+5. "Lo punya akun di platform itu?" (untuk login kalau perlu)
+```
 
-### Approach: yt-dlp untuk video
+### Step 2: Cek profile PUBLIC
 
 ```bash
-# Download video publik Facebook
-yt-dlp "https://www.facebook.com/watch?v=123456789"
+# Instagram
+instaloader --no-pictures --no-videos profile [username] 2>&1 | head -5
+# IF "Private profile" → STOP
 
-# Download video dari page publik
-yt-dlp "https://www.facebook.com/pagename/videos/"
+# X/Twitter
+# Coba akses URL langsung
+web_extract(url="https://x.com/[username]", prompt="Is this profile public?")
 ```
 
-### Approach: gallery-dl untuk foto
-
-```bash
-# Download foto dari album publik
-gallery-dl "https://www.facebook.com/pagename/photos/"
-
-# Butuh cookies biasanya
-gallery-dl --cookies-from-browser chrome "https://www.facebook.com/pagename/photos/"
+```
+IF private → output "❌ Profile private. Gak bisa scrape." dan STOP
+IF public → lanjut
 ```
 
-### Scrape post text Facebook
+### Step 3: Execute per platform
 
-```python
-# Paling reliable: web_extract langsung ke post URL publik
-result = web_extract(
-    url="https://www.facebook.com/pagename/posts/123456",
-    prompt="Extract: post text, timestamp, like count, comment count, share count"
-)
+```
+IF platform = Instagram:
+  TOOL: instaloader
+  # Download posts
+  terminal: instaloader profile [username] --count [N]
+  # Profile info only
+  terminal: instaloader profile [username] --no-pictures --no-videos --metadata-json
+
+IF platform = X (Twitter):
+  TOOL: gallery-dl atau yt-dlp
+  # Media
+  terminal: gallery-dl "https://x.com/[username]"
+  # Video
+  terminal: yt-dlp "https://x.com/[username]/status/[id]"
+  # Text: web_extract dari tweet URL
+
+IF platform = TikTok:
+  TOOL: yt-dlp
+  # Video
+  terminal: yt-dlp "https://www.tiktok.com/@[username]/video/[id]"
+  # All videos
+  terminal: yt-dlp "https://www.tiktok.com/@[username]"
+
+IF platform = Facebook:
+  TOOL: yt-dlp (video) atau gallery-dl (foto)
+  # Video
+  terminal: yt-dlp "https://www.facebook.com/watch?v=[id]"
+  # Foto: gallery-dl --cookies-from-browser chrome "[URL]"
+  # Text: web_extract dari post URL publik
 ```
 
-⚠️ Kalau gagal (login wall) → pakai `browser_navigate` + `browser_screenshot` + `vision_analyze`.
+### Step 4: Handle failures
+
+```
+IF tool gagal (rate limit / block):
+  1. Update tool: pip install --upgrade [tool]
+  2. IF masih gagal → fallback: browser_navigate + vision_analyze
+  3. IF masih gagal → bilang "platform lagi block scraper"
+  DO NOT: fabricate data
+```
 
 ---
 
-## Platform 4: TikTok (bonus)
-
-```bash
-# Download video TikTok (publik)
-yt-dlp "https://www.tiktok.com/@username/video/123456789"
-
-# Download tanpa watermark (kalau yt-dlp support)
-yt-dlp --format best "https://www.tiktok.com/@username/video/123456789"
-
-# Download semua video dari profile
-yt-dlp "https://www.tiktok.com/@username"
-```
-
----
-
-## Procedure
-
-### 1. Klarifikasi
-
-- Platform mana?
-- Username/URL target?
-- Mau download apa? (media / teks post / profile info / semua)
-- Berapa banyak? (last 10 / semua / date range)
-- Lo punya akun di platform itu? (untuk login kalau diperlukan)
-
-### 2. Cek apakah profile PUBLIK
-
-```bash
-# Instagram — cek tanpa login dulu
-instaloader --no-pictures --no-videos profile username 2>&1 | head -5
-# Kalau "Private profile" → STOP, bilang ke user
-```
-
-### 3. Execute
-
-Pilih command dari reference per platform di atas.
-
-### 4. Output
+## OUTPUT TEMPLATE
 
 ```markdown
 ## 📱 Scrape Result: [Platform] — @[username]
 
 **Tanggal**: [hari ini]
-**Profile**: [public/private]
+**Profile**: Public ✅
 **Data extracted**: [media / posts / profile info]
-**Total items**: [N]
 
 ### Profile Info
 | Field | Value |
 |-------|-------|
-| Username | @... |
-| Followers | ... |
-| Following | ... |
-| Posts | ... |
-| Bio | "..." |
+| Username | @[username] |
+| Followers | [N] |
+| Following | [N] |
+| Posts | [N] |
+| Bio | "[bio]" |
 
 ### Media downloaded
 📁 Path: `~/Downloads/[username]/`
 - [N] foto
 - [N] video
-- [N] metadata JSON
 
-⚠️ Data publik saja. Verifikasi langsung di platform untuk informasi terkini.
+⚠️ Data publik saja. Copyright tetap milik pemilik akun.
 ```
 
 ---
 
-## Pitfalls
+## CONTOH OUTPUT
 
-### Pitfall 1: Private account
+```markdown
+## 📱 Scrape Result: Instagram — @coffeeshop_jkt
 
-JANGAN coba bypass private account. Kalau profile private:
+**Tanggal**: 24 Mei 2026
+**Profile**: Public ✅
+**Data extracted**: 10 post terbaru + profile info
+
+### Profile Info
+| Field | Value |
+|-------|-------|
+| Username | @coffeeshop_jkt |
+| Followers | 45.2K |
+| Following | 312 |
+| Posts | 847 |
+| Bio | "Specialty coffee since 2019 ☕ Kemang & Senopati" |
+
+### Media downloaded
+📁 Path: `~/Downloads/coffeeshop_jkt/`
+- 8 foto (.jpg)
+- 2 video (.mp4)
+- 10 metadata (.json)
+
+### Command used
+```bash
+instaloader profile coffeeshop_jkt --count 10
 ```
-❌ Profile @username bersifat private. Gw gak bisa scrape tanpa izin pemilik akun.
+
+⚠️ Data publik saja. Redistribusi tanpa credit = pelanggaran copyright.
 ```
-
-### Pitfall 2: Rate limit / temporary ban
-
-- Instagram: max ~100 request/jam (tanpa login), bisa lebih rendah
-- Twitter/X: sangat restrictive, bisa block setelah 10-20 request
-- Facebook: block setelah beberapa request tanpa cookie
-
-Mitigasi: delay, cookies, jangan greedy.
-
-### Pitfall 3: Tools outdated
-
-Social media sering update anti-bot. Tools yang jalan bulan lalu bisa gagal hari ini.
-
-Kalau tool gagal:
-1. Update tool (`pip install --upgrade instaloader`)
-2. Cek GitHub issues tool tersebut
-3. Fallback ke `browser_navigate` + `vision_analyze`
-4. Bilang ke user bahwa platform lagi block
-
-### Pitfall 4: Content yang inappropriate
-
-Kalau user minta scrape profile yang jelas-jelas untuk stalking/harassment → refuse politely.
-
-### Pitfall 5: Login credential security
-
-Kalau user kasih login credentials:
-- JANGAN simpan di memory atau log
-- Pakai session file (bukan plain password di command)
-- Remind user: "pake akun lo sendiri, jangan akun orang"
-
-### Pitfall 6: Copyright media
-
-Media yang di-download tetap copyright pemiliknya. Scraping = backup/research personal. Redistribusi / repost tanpa credit = pelanggaran.
 
 ---
 
-## Tool comparison
+## DECISION TREE: Tool Selection
 
-| Tool | Platform | Media | Text | Login needed? |
-|------|----------|-------|------|---------------|
-| `instaloader` | Instagram | ✅ foto, video, stories | ✅ caption, metadata | Optional (untuk stories/highlights) |
-| `gallery-dl` | Instagram, X, Facebook, TikTok, dll | ✅ foto, video | ⚠️ limited | Optional (cookies) |
-| `yt-dlp` | X, Facebook, TikTok, YouTube | ✅ video | ❌ | Optional |
-| `snscrape` | X (Twitter) | ❌ | ✅ tweet text | ❌ (tapi mungkin udah mati) |
-| `web_extract` | Any public page | ❌ | ✅ text | ❌ |
-| `browser` + `vision` | Any (fallback) | ✅ screenshot | ✅ via OCR | ❌ |
+```
+IF Instagram + media → instaloader
+IF Instagram + stories/highlights → instaloader --login [user_own_account]
+IF X/Twitter + media → gallery-dl
+IF X/Twitter + video → yt-dlp
+IF TikTok + video → yt-dlp
+IF Facebook + video → yt-dlp
+IF Facebook + foto → gallery-dl (butuh cookies biasanya)
+IF any platform + text only → web_extract dari URL post
+IF semua gagal → browser_navigate + vision_analyze (fallback)
+```
+
+## DECISION TREE: Login Required
+
+```
+IF tool bilang "login required":
+  → tanya user: "Lo punya akun sendiri di platform ini?"
+  IF yes → "Mau login pake akun lo? (session di-cache lokal)"
+  IF no → "Tanpa login, scraping limited. Mau lanjut yang bisa diambil?"
+  DO NOT: simpan credentials di memory/log
+```
 
 ---
 
-## Verification
+## VERIFICATION
 
-1. Apakah profile yang di-scrape PUBLIC?
-2. Apakah tools ter-update (latest version)?
-3. Apakah output gak ngarang data (jumlah followers, post content)?
-4. Apakah ada disclaimer "data publik saja"?
-5. Apakah gak ada credential yang terexpose di output?
-6. Apakah intent user legitimate (bukan stalking)?
+```
+□ Profile yang di-scrape PUBLIC?
+□ Tools ter-update?
+□ Output gak ngarang data?
+□ Disclaimer "data publik saja" ada?
+□ Gak ada credential terexpose?
+□ Intent user legitimate (bukan stalking)?
+
+IF ada □ TIDAK → fix atau refuse
+```

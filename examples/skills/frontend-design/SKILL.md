@@ -1,7 +1,7 @@
 ---
 name: frontend-design
-description: Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, artifacts, posters, or applications (examples include websites, landing pages, dashboards, React components, HTML/CSS layouts, or when styling/beautifying any web UI). Generates creative, polished code and UI design that avoids generic AI aesthetics.
-version: 1.0.0
+description: Create distinctive, production-grade frontend interfaces. Anti-generic AI aesthetics. Bold design choices.
+version: 2.0.0
 metadata:
   hermes:
     tags: [frontend, design, ui, css, html, react, creative, web]
@@ -10,115 +10,99 @@ metadata:
 
 # Frontend Design
 
-> Adapted from [anthropics/skills/frontend-design](https://github.com/anthropics/skills/blob/main/skills/frontend-design/SKILL.md) (Anthropic official skill). Reformatted for Hermes Agent compatibility.
+## KAPAN PAKAI
 
-This skill guides creation of distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. Implement real working code with exceptional attention to aesthetic details and creative choices.
-
-The user provides frontend requirements: a component, page, application, or interface to build. They may include context about the purpose, audience, or technical constraints.
-
-## When to Use
-
-- User asks to build web components, pages, or applications
-- User wants a landing page, dashboard, React component, HTML/CSS layout
-- User asks to "beautify" or "style" any web UI
-- User asks for a poster, visual artifact, or creative web piece
-- User mentions wanting something "not generic" / "looks designed" / "premium feel"
-
-JANGAN pakai untuk:
-- Backend API logic (pakai `backend-proper`)
-- UX flow review tanpa implementasi (pakai `ui-ux`)
-- Data visualization / charting only (pakai code execution)
-
-## Design Thinking
-
-Before coding, understand the context and commit to a BOLD aesthetic direction:
-
-- **Purpose**: What problem does this interface solve? Who uses it?
-- **Tone**: Pick an extreme: brutally minimal, maximalist chaos, retro-futuristic, organic/natural, luxury/refined, playful/toy-like, editorial/magazine, brutalist/raw, art deco/geometric, soft/pastel, industrial/utilitarian, etc. There are so many flavors to choose from. Use these for inspiration but design one that is true to the aesthetic direction.
-- **Constraints**: Technical requirements (framework, performance, accessibility).
-- **Differentiation**: What makes this UNFORGETTABLE? What's the one thing someone will remember?
-
-**CRITICAL**: Choose a clear conceptual direction and execute it with precision. Bold maximalism and refined minimalism both work — the key is intentionality, not intensity.
-
-Then implement working code (HTML/CSS/JS, React, Vue, Svelte, etc.) that is:
-
-- Production-grade and functional
-- Visually striking and memorable
-- Cohesive with a clear aesthetic point-of-view
-- Meticulously refined in every detail
-
-## Frontend Aesthetics Guidelines
-
-Focus on:
-
-### Typography
-Choose fonts that are beautiful, unique, and interesting. Avoid generic fonts like Arial and Inter; opt instead for distinctive choices that elevate the frontend's aesthetics — unexpected, characterful font choices. Pair a distinctive display font with a refined body font.
-
-### Color & Theme
-Commit to a cohesive aesthetic. Use CSS variables for consistency. Dominant colors with sharp accents outperform timid, evenly-distributed palettes.
-
-### Motion
-Use animations for effects and micro-interactions. Prioritize CSS-only solutions for HTML. Use Motion library (framer-motion) for React when available. Focus on high-impact moments: one well-orchestrated page load with staggered reveals (`animation-delay`) creates more delight than scattered micro-interactions. Use scroll-triggering and hover states that surprise.
-
-### Spatial Composition
-Unexpected layouts. Asymmetry. Overlap. Diagonal flow. Grid-breaking elements. Generous negative space OR controlled density.
-
-### Backgrounds & Visual Details
-Create atmosphere and depth rather than defaulting to solid colors. Add contextual effects and textures that match the overall aesthetic. Apply creative forms like gradient meshes, noise textures, geometric patterns, layered transparencies, dramatic shadows, decorative borders, custom cursors, and grain overlays.
-
-## NEVER (Anti-Patterns)
-
-NEVER use generic AI-generated aesthetics:
-
-- Overused font families (Inter, Roboto, Arial, system fonts)
-- Cliched color schemes (particularly purple gradients on white backgrounds)
-- Predictable layouts and component patterns
-- Cookie-cutter design that lacks context-specific character
-- Same font (Space Grotesk) across every generation
-- Same layout structure every time
-
-Interpret creatively and make unexpected choices that feel genuinely designed for the context. No design should be the same. Vary between light and dark themes, different fonts, different aesthetics. NEVER converge on common choices across generations.
-
-## Implementation Complexity
-
-**IMPORTANT**: Match implementation complexity to the aesthetic vision:
-
-- **Maximalist designs** need elaborate code with extensive animations and effects
-- **Minimalist or refined designs** need restraint, precision, and careful attention to spacing, typography, and subtle details
-- Elegance comes from executing the vision well, not from throwing effects at everything
-
-## Procedure (Hermes-specific)
-
-### 1. Clarify context
-
-Ask (if not provided):
-- "Apa tujuan interface ini? Siapa target user?"
-- "Ada preference estetika? (dark/light, vibe tertentu, brand reference?)"
-- "Framework apa? (React/Vue/Svelte/plain HTML?)"
-- "Butuh responsive? Target device?"
-
-### 2. Commit to aesthetic direction
-
-State clearly in output:
 ```
-Aesthetic direction: [e.g., "Brutalist editorial — raw typography, mono stack, harsh contrast, intentional asymmetry"]
+IF user minta "bikin UI cantik" OR "landing page" OR "beautify" → PAKAI
+IF user minta web component dengan emphasis di visual → PAKAI
+IF user minta poster / visual artifact web → PAKAI
+IF user minta "not generic" OR "looks designed" → PAKAI
+IF user minta backend API → JANGAN (pakai backend-proper)
+IF user minta UX review tanpa implementasi → JANGAN (pakai ui-ux)
 ```
 
-### 3. Implement
+---
 
-- Write complete, runnable code
-- Use `write_file` untuk output (jangan paste 200+ baris di chat)
-- Include font imports (Google Fonts / Fontsource / local)
-- Include CSS variables at root
-- Include at least 1 motion element (transition, animation, scroll-trigger)
+## PROCEDURE (ikuti exact)
 
-### 4. Output format
+### Step 1: Clarify context
+
+```
+TANYA (kalau belum clear):
+1. "Tujuan interface ini? Siapa user?"
+2. "Preference estetika? (dark/light/retro/minimal/bold)"
+3. "Framework? (React/Vue/Svelte/plain HTML)"
+4. "Responsive? Target device?"
+```
+
+### Step 2: Commit to aesthetic direction
+
+```
+PILIH 1 aesthetic direction (JANGAN generic):
+- Brutalist (raw typography, harsh contrast, mono)
+- Maximalist (rich colors, layers, animation heavy)
+- Minimalist refined (negative space, elegant type, subtle)
+- Retro-futuristic (neon, gradients, terminal-vibe)
+- Editorial/magazine (grid, large type, editorial layout)
+- Organic/natural (earthy tones, soft curves, texture)
+- Luxury/refined (gold accents, serif fonts, high contrast)
+- Playful/toy-like (rounded, bright, bouncy animations)
+
+STATE direction di output: "Aesthetic: [direction]"
+```
+
+### Step 3: Design choices (MANDATORY)
+
+```
+CHOOSE for each:
+- Font display: [distinctive, NOT Inter/Arial/Roboto]
+- Font body: [readable, pairs with display]
+- Palette: [dominant → accent → neutral]
+- Motion: [1+ animation that adds delight]
+- Differentiator: [1 thing someone will remember]
+
+DO NOT: use Inter, Roboto, Arial, system fonts (generic)
+DO NOT: purple gradient on white background (AI slop)
+DO NOT: same layout structure every time
+```
+
+### Step 4: Implement
+
+```
+RULES:
+- Write COMPLETE runnable code (no TODO, no placeholder)
+- Include font imports (Google Fonts / Fontsource)
+- Include CSS variables at :root
+- Include 1+ motion element (transition, animation)
+- WCAG AA contrast minimum (4.5:1 body text)
+- Responsive at 375px minimum
+
+OUTPUT: write_file() (jangan paste 200+ baris di chat)
+```
+
+### Step 5: Self-check
+
+```
+□ Visually DISTINCT from generic templates?
+□ A designer would say "this has a point of view"?
+□ Code runs without errors?
+□ Fonts loaded (import/link present)?
+□ 1+ unexpected creative choice?
+□ WCAG AA contrast met?
+□ Works at 375px?
+
+IF any □ TIDAK → revise
+```
+
+---
+
+## OUTPUT TEMPLATE
 
 ```markdown
 ## Frontend: [Nama]
 
 **Aesthetic**: [direction]
-**Stack**: [HTML+CSS / React+Tailwind / Vue+CSS / etc]
+**Stack**: [HTML+CSS / React+Tailwind / etc]
 **Key design choices**:
 - Font: [display] + [body]
 - Palette: [dominant → accent → neutral]
@@ -127,49 +111,87 @@ Aesthetic direction: [e.g., "Brutalist editorial — raw typography, mono stack,
 
 **Files**:
 - `[path]` — [description]
+
+**Preview notes**:
+- Open [file] in browser to preview
+- Responsive: tested at 375px, 768px, 1280px
 ```
 
-### 5. Self-check
+---
 
-Before delivering:
-- [ ] Is this VISUALLY DISTINCT from generic templates?
-- [ ] Would a designer say "this has a point of view"?
-- [ ] Does the code actually run without errors?
-- [ ] Are fonts loaded (import/link present)?
-- [ ] Is there at least one unexpected creative choice?
-- [ ] Does contrast meet WCAG AA? (4.5:1 body text)
+## CONTOH OUTPUT
 
-## Pitfalls
+```markdown
+## Frontend: Startup Landing Page
 
-### Pitfall 1: Defaulting to safe choices
+**Aesthetic**: Editorial magazine — large typography, asymmetric grid, dramatic white space
+**Stack**: HTML + CSS (no framework, pure)
+**Key design choices**:
+- Font: "Playfair Display" (display) + "Source Sans 3" (body)
+- Palette: #1a1a2e (dominant dark) → #e94560 (accent red) → #f5f5f5 (neutral)
+- Motion: Hero text slides in with staggered delay; CTA button has magnetic hover
+- Differentiator: Split-screen layout with text left, oversized image right bleeding off edge
 
-If you catch yourself reaching for Inter + purple gradient + card grid — STOP. Restart the design thinking step. Choose something with character.
+**Files**:
+- `output/landing-page/index.html` — full page
+- `output/landing-page/style.css` — all styles + animations
 
-### Pitfall 2: All flash, no function
+**Preview notes**:
+- Open index.html in browser
+- Responsive: stacks vertically on mobile, grid on desktop
+- Font loaded via Google Fonts CDN
+```
 
-Creative ≠ broken. Every element must be accessible (keyboard nav, screen reader labels) and functional. Beauty that doesn't work = failed design.
+---
 
-### Pitfall 3: Same output every time
+## DECISION TREE: Aesthetic by Context
 
-Vary deliberately: if last output was dark/minimal, next one should be light/maximal or retro/warm. Track your recent outputs (session context) and diverge.
+```
+IF product = SaaS B2B → Clean, professional, data-forward. NOT playful.
+IF product = Consumer app → Bold, memorable, personality-driven.
+IF product = Portfolio/personal → Express personality. Can be experimental.
+IF product = E-commerce → Trust signals, clean product display, fast-feeling.
+IF product = Blog/content → Editorial, type-focused, readable.
+IF user says "dark mode" → Dark bg, light text, careful with accent colors.
+IF user says "minimal" → Restraint. Fewer colors, more whitespace, precision spacing.
+IF user says "creative/bold" → Go maximalist. Overlap, asymmetry, unexpected.
+```
 
-### Pitfall 4: Ignoring project stack
+## DECISION TREE: Framework Choice
 
-If project uses Tailwind, output Tailwind classes — don't write vanilla CSS that conflicts. If project uses Vue, don't output React JSX. Stack discovery FIRST.
+```
+IF project uses React → output JSX + CSS Modules or Tailwind
+IF project uses Vue → output .vue SFC
+IF project uses Svelte → output .svelte
+IF project uses Tailwind → use Tailwind classes (NOT vanilla CSS)
+IF no framework specified → plain HTML + CSS (most universal)
+IF user says "quick prototype" → plain HTML + CSS
+```
 
-### Pitfall 5: Forgetting mobile
+---
 
-Unless specified desktop-only, every layout must work at 375px width minimum. Test mentally: would this grid collapse break on mobile?
+## ANTI-PATTERNS (JANGAN lakukan)
 
-## Verification
+```
+DO NOT: Inter font family
+DO NOT: purple gradient on white
+DO NOT: predictable card grid with rounded corners
+DO NOT: same Space Grotesk across every generation
+DO NOT: cookie-cutter Bootstrap look
+DO NOT: same structure every time (VARY deliberately)
+```
 
-1. Would this pass as "human-designed" (not "AI-generated")?
-2. Is the aesthetic direction clear and consistent throughout?
-3. Is code production-ready (no TODO, no placeholder)?
-4. Are fonts, colors, and spacing intentional (not default)?
-5. Is there responsive behavior?
-6. At least WCAG AA contrast on text?
+---
 
-## Attribution
+## VERIFICATION
 
-This skill is adapted from the official Anthropic `frontend-design` skill ([source](https://github.com/anthropics/skills/blob/main/skills/frontend-design/SKILL.md)). Reformatted with Hermes-compatible frontmatter, added procedure steps, pitfalls, and verification sections per Hermes SKILL.md convention.
+```
+□ Would this pass as "human-designed" (not "AI-generated")?
+□ Aesthetic direction clear and consistent?
+□ Code production-ready (no TODO, no placeholder)?
+□ Fonts, colors, spacing intentional (not default)?
+□ Responsive?
+□ WCAG AA contrast on text?
+
+IF ada □ TIDAK → revise before deliver
+```

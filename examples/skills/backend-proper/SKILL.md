@@ -1,7 +1,7 @@
 ---
 name: backend-proper
-description: Bikin / refactor / debug backend service dengan disiplin engineering yang serius — security, error handling, observability, idempotency, dan testing. Reject quick-and-dirty pattern yang ke-deploy tanpa mikir failure mode.
-version: 1.0.0
+description: Bikin / refactor / debug backend service dengan disiplin engineering — security, error handling, observability, idempotency, testing.
+version: 2.0.0
 metadata:
   hermes:
     tags: [backend, api, database, security, devops, observability]
@@ -10,368 +10,230 @@ metadata:
 
 # Backend Proper
 
-Skill untuk task backend serius: API design, database schema, integration, refactor, debug. Skill ini tidak akan bikin endpoint tanpa mikir auth, validasi, error handling, dan failure mode. Ngotot di dasar engineering yang sering di-skip.
+## KAPAN PAKAI
 
-## When to Use
+```
+IF user minta "bikin API" OR "endpoint" OR "service" → PAKAI
+IF user minta "design DB schema" → PAKAI
+IF user minta "tambah integrasi" (payment, email, queue) → PAKAI
+IF user minta "refactor backend" → PAKAI
+IF user minta "debug 500 / data inconsistency" → PAKAI
+IF user minta frontend/UI → JANGAN (pakai web-development / frontend-design)
+IF user minta quick prototype throwaway → JANGAN (overkill)
+```
 
-User minta:
-- Bikin API endpoint / service
-- Design DB schema
-- Tambah integrasi (payment, email, queue)
-- Refactor existing backend
-- Debug 500 error / data inconsistency / latency issue
-- Security audit endpoint
+---
 
-JANGAN pakai untuk:
-- Frontend / UI (pake `web-development` atau `ui-ux`)
-- Pure scripting / one-off automation
-- "Quick prototype throwaway" (skill ini overkill, user prefer raw)
+## PROCEDURE (ikuti exact)
 
-## Filosofi
-
-1. **Boring is good**. Standard pattern, well-tested library, predictable behavior.
-2. **Failure mode pertama, happy path kedua**. Apa yang terjadi kalau DB down? Network split? Disk full?
-3. **Idempotency by default**. Operasi yang affecting state harus survive retry.
-4. **Observability built-in**, bukan ditambahin nanti.
-5. **Security default-deny**, bukan default-allow.
-
-## Stack-aware Procedure
-
-### 1. Stack discovery
+### Step 1: Stack discovery
 
 ```bash
-# Cek stack
-ls go.mod pyproject.toml requirements.txt package.json Gemfile pom.xml
-
-# Cek framework
-grep -i "fastapi\|django\|flask\|express\|nestjs\|gin\|chi\|fiber\|axum\|rocket" \
-  package.json pyproject.toml go.mod 2>/dev/null
-
-# Cek DB layer
-grep -i "prisma\|drizzle\|sqlx\|sqlc\|sqlalchemy\|gorm\|typeorm\|knex\|pg\|mongoose" \
-  package.json pyproject.toml go.mod 2>/dev/null
-
-# Cek deploy target
-ls Dockerfile docker-compose.* .github/workflows/ Procfile vercel.json railway.toml
+ls go.mod pyproject.toml requirements.txt package.json
+grep -i "fastapi\|express\|gin\|chi\|nestjs" package.json pyproject.toml go.mod 2>/dev/null
+grep -i "prisma\|drizzle\|sqlx\|sqlalchemy\|gorm" package.json pyproject.toml go.mod 2>/dev/null
 ```
 
-Catat:
+CATAT:
 - Language + version
-- HTTP framework (FastAPI, chi, Express, Axum, ...)
+- HTTP framework
 - DB driver / ORM
-- DB engine (Postgres / MySQL / SQLite / Mongo / Redis)
 - Auth approach (JWT / session / OAuth)
-- Secret management (env / Vault / secret manager)
-- Logging (stdout / structured logger / Sentry)
-- Deployment (container / serverless / VPS)
+- Logging (stdout / structured / Sentry)
 
-### 2. Spesifikasi sebelum kode
+### Step 2: Spec sebelum kode (untuk endpoint baru)
 
-Untuk endpoint baru / non-trivial change:
+```
+TULIS spec ini, TUNJUKKAN ke user, TUNGGU approve:
+
+## Spec: [METHOD] [PATH]
+- Auth: [required/optional, scope apa]
+- Input: [body schema dengan types]
+- Response: [status codes + body]
+- Side effects: [DB writes, events, logs]
+- Constraints: [rate limit, idempotency, transaction]
+```
+
+### Step 3: Implementation checklist
+
+```
+UNTUK setiap endpoint, cek SEMUA ini:
+
+AUTH:
+□ Authentication (siapa user) → verified
+□ Authorization (apa yang user boleh) → verified
+□ Token validation (signature, expiry) → verified
+DO NOT: trust client claims (X-User-Id header dari frontend)
+
+INPUT VALIDATION:
+□ Schema validation (Zod/Pydantic/validator) → strict
+□ Length limits → set (default max 1000 char)
+□ Type coercion explicit → no implicit
+□ Business rules → validated
+
+DATABASE:
+□ Parameterized queries → ALWAYS (prevent SQL injection)
+□ Transaction untuk multi-step write → yes
+□ Index pada WHERE/JOIN columns → verified
+□ Connection pooling → configured
+DO NOT: SELECT * (explicit columns only)
+DO NOT: loop-and-query N+1 (pakai JOIN/batch)
+
+ERROR HANDLING:
+□ Try-catch sekitar IO → yes
+□ Business error (4xx) vs system error (5xx) → distinguished
+□ Error response sanitized → no stack trace leak
+□ Log dengan request_id → yes
+DO NOT: swallow error diam-diam (except: pass = BAHAYA)
+
+OBSERVABILITY:
+□ Structured log (JSON, request_id, user_id, latency_ms)
+□ Metrics (request count, latency p50/p95, error rate)
+□ Log level tepat (INFO normal, WARN edge, ERROR failure)
+DO NOT: log credential / token / PII
+
+IDEMPOTENCY (untuk POST/PUT/PATCH/DELETE):
+□ Support Idempotency-Key header
+□ Store key + response 24-48 jam
+□ Return cached response untuk retry
+```
+
+### Step 4: Write code
+
+```
+RULE: Match existing patterns di repo (read 2-3 existing handlers dulu)
+RULE: Buat file baru sesuai convention project
+RULE: Include error handling dari awal (bukan nanti)
+```
+
+### Step 5: Test
+
+```
+MINIMAL:
+□ Unit test pure logic
+□ Integration test happy path + 1 error path
+□ Test idempotency (call 2x → 1 effect)
+```
+
+### Step 6: Verify sebelum deliver
+
+---
+
+## OUTPUT TEMPLATE
 
 ```markdown
-## Spec: POST /orders
+## Implementasi: [METHOD] [PATH]
 
-### Request
-- Method: POST
-- Path: /api/v1/orders
-- Auth: Bearer JWT (scope: `order:create`)
-- Idempotency-Key header: required (UUID)
-- Body schema:
-  - product_id: string (uuid)
-  - quantity: integer (1-1000)
-  - shipping_address_id: string (uuid)
+**Stack**: [language + framework + DB]
 
-### Response
-- 201 Created → Order DTO
-- 400 → validation error
-- 401 → no token
-- 403 → insufficient scope
-- 404 → product not found
-- 409 → conflict (idempotency-key reused with different body)
-- 422 → out of stock
-- 429 → rate limit hit
-- 5xx → server error (retryable kalau body bilang retryable: true)
+**File baru**:
+- `path/handler.go` — handler
+- `path/service.go` — business logic
+- `path/queries.sql` — DB queries
+- `path/handler_test.go` — tests
 
-### Side effects
-- INSERT order, order_items
-- DECREMENT product.stock atomically
-- PUBLISH event order.created ke queue
-- LOG dengan request_id
+**Spec implemented**:
+- ✅ Auth via [method]
+- ✅ Input validated ([library])
+- ✅ Idempotency-Key handled
+- ✅ Structured log dengan request_id
+- ✅ Rate limit [N] RPS/user
 
-### Constraints
-- Maximum 100 RPS per user
-- Transactional (semua sukses atau semua rollback)
-- Idempotent: retry dengan key sama → kembalikan response asli, bukan duplicate order
+**Test**:
+- ✅ Unit test service
+- ✅ Integration test
+- ✅ Idempotency test
+
+**Yang perlu user verify**:
+- [hal yang butuh confirm dari user]
 ```
 
-Tunjukkan spec ke user, dapat approve, baru implement.
+---
 
-### 3. Implementation checklist (per endpoint)
-
-#### Auth + AuthZ
-- ✅ Authentication (siapa user)
-- ✅ Authorization (apa yang user boleh — scope / role / resource ownership)
-- ✅ Token validation (signature, expiry, issuer, audience)
-- ❌ Jangan trust client claims (`X-User-Id` header dari frontend = no-go)
-
-#### Input validation
-- ✅ Schema validation (Zod / Pydantic / class-validator) — strict, reject extra field
-- ✅ Length limits (string max 1000 char default, lebih kalau dijustifikasi)
-- ✅ Type coercion explicit (string "true" ≠ boolean true)
-- ✅ Business rule validation (quantity > 0, email valid, dst)
-
-#### Database access
-- ✅ Parameterized queries (PREVENT SQL injection — never string concat)
-- ✅ Transaction untuk multi-step write
-- ✅ Index pada column yang di-WHERE / JOIN
-- ✅ Connection pooling configured
-- ❌ Jangan SELECT * di production code (explicit columns)
-- ❌ Jangan loop-and-query (N+1) — pakai JOIN atau batch fetch
-
-#### Error handling
-- ✅ Try-catch sekitar IO (DB, network, file)
-- ✅ Distinguish business error (4xx) vs system error (5xx)
-- ✅ Sanitize error response — JANGAN leak stack trace / DB query / internal path ke user
-- ✅ Log dengan request_id biar bisa di-trace
-- ❌ Jangan swallow error diam-diam (`except: pass` = bahaya)
-
-#### Observability
-- ✅ Structured logging (JSON, dengan request_id, user_id, latency_ms)
-- ✅ Metrics (request count, latency p50/p95/p99, error rate)
-- ✅ Trace untuk operasi penting (DB call, external API call)
-- ✅ Log level tepat (INFO untuk normal, WARN untuk edge case, ERROR untuk failure)
-- ❌ JANGAN log credential / token / PII ke logs
-
-#### Idempotency (untuk POST/PUT/PATCH/DELETE)
-- ✅ Endpoint yang affect state: support `Idempotency-Key` header
-- ✅ Store key + response 24-48 jam, return cached response untuk retry
-- ✅ Webhook handler: dedup by event ID
-
-#### Rate limiting
-- ✅ Per IP + per user
-- ✅ 429 response dengan `Retry-After` header
-- ✅ Different tier untuk auth vs anonymous
-
-#### Async / queue
-- ✅ Operasi panjang → queue (RabbitMQ, Redis, SQS, BullMQ, dst), bukan sync
-- ✅ Worker idempotent
-- ✅ DLQ untuk job yang gagal terus
-- ✅ Retry dengan exponential backoff
-
-#### Test
-- ✅ Unit test pure logic
-- ✅ Integration test dengan real DB (testcontainers atau test schema)
-- ✅ E2E test happy path + 1-2 error path
-- ✅ Test idempotency (call 2x dengan key sama → 1 effect)
-
-#### Security checklist
-- ✅ HTTPS only (HSTS header)
-- ✅ CORS specific origin (jangan `*` di production)
-- ✅ CSRF protection untuk session-based auth
-- ✅ Password hash dengan bcrypt/argon2 (jangan MD5/SHA1)
-- ✅ Secrets dari env / secret manager (jangan hardcode)
-- ✅ Dependency scan (pip-audit / npm audit / govulncheck)
-- ✅ SQL injection: parameterized queries
-- ✅ XSS: escape user input di output
-- ✅ Open redirect: validate redirect URL whitelist
-
-### 4. Deploy considerations
-
-- ✅ Health endpoint (`/health` atau `/healthz`) — return 200 kalau service ready
-- ✅ Graceful shutdown (drain in-flight request)
-- ✅ Migration strategy (forward-only? backward compat?)
-- ✅ Rollback plan
-- ✅ Resource limits (CPU/memory di container manifest)
-- ✅ Backup strategy untuk data tier
-
-## Pitfalls
-
-### Pitfall 1: SELECT * + frontend pretend-it's-fine
-
-DB schema berubah → response bocor field private. Selalu eksplisit kolom + DTO mapping.
-
-### Pitfall 2: N+1 query
-
-```python
-# Bad
-orders = db.query("SELECT * FROM orders WHERE user_id = ?", uid)
-for order in orders:
-    items = db.query("SELECT * FROM order_items WHERE order_id = ?", order.id)
-```
-
-10 order → 11 query. 1000 order → catastrophic.
-
-Fix: JOIN, atau batch fetch (`WHERE order_id IN (...)`).
-
-### Pitfall 3: Transaction boundary salah
-
-```python
-# Bad: race condition kalau check stock di luar transaction
-if get_stock(product_id) > 0:
-    decrement_stock(product_id)
-    create_order(...)
-```
-
-Fix: gabung dalam transaction + lock row, atau atomic decrement (`UPDATE ... SET stock = stock - 1 WHERE id = ? AND stock > 0`).
-
-### Pitfall 4: Webhook tanpa verifikasi signature
-
-Stripe / GitHub / Discord webhook → siapa pun bisa fake call. Selalu verify HMAC signature pakai secret webhook.
-
-### Pitfall 5: Env var salah scope
-
-`DATABASE_URL` di client-side bundle (Next.js public env) → DB credential leak. Cek strategy framework dengan teliti.
-
-### Pitfall 6: Caching tanpa invalidation strategy
-
-Cache itu mudah, invalidate yang susah.
-
-```
-Sebelum bikin cache:
-1. TTL berapa? (5 menit? 1 jam? sampai event tertentu?)
-2. Cara invalidate kalau data berubah?
-3. Cache miss path tetap aman / cepat?
-4. Stampede protection (10K concurrent miss bareng)?
-```
-
-Kalau gak ada jawaban semua, **jangan cache dulu** — measure first.
-
-### Pitfall 7: Authorization di middleware aja
-
-```python
-# Bad
-@requires_login  # cek auth doang
-def get_order(order_id):
-    return db.query("SELECT * FROM orders WHERE id = ?", order_id)
-```
-
-User A authenticated bisa fetch order user B. **Authentication ≠ authorization**. Cek ownership / scope di handler.
-
-### Pitfall 8: Error message bocor info
-
-```
-500 Internal Server Error
-Error: connection to "db.internal:5432" failed: password authentication failed for user "app_user"
-```
-
-Bocor: hostname internal, port, username DB. Sanitize: `Internal error. Request ID: xyz`. Detail di log internal.
-
-### Pitfall 9: Microservices premature
-
-3-orang team butuh microservices? Probably not. Modular monolith dulu sampai pain points jelas justify split.
-
-### Pitfall 10: ORM black-box
-
-ORM nyaman, tapi generated SQL bisa horrible (N+1 hidden, full table scan). Inspect query yang dihasilkan untuk hot path.
-
-## Verification
-
-Sebelum mark "selesai":
-
-1. Apakah semua endpoint require auth yang relevan?
-2. Apakah authz dicek di handler (bukan cuma middleware)?
-3. Apakah input validation strict?
-4. Apakah error response gak leak internal detail?
-5. Apakah log gak ngandung secret / PII?
-6. Apakah unit + integration test ada untuk happy + error path?
-7. Apakah migration backward-compat (kalau zero-downtime deploy)?
-8. Apakah ada test idempotency untuk operasi state-changing?
-9. Apakah perf tested untuk realistic load (kalau public-facing)?
-
-Kalau ada satu "tidak" — tahan deploy, fix dulu.
-
-## Database Schema Tips
-
-### Naming
-- Snake_case table & column
-- Plural table (`users`, `orders`)
-- Timestamps di setiap table (`created_at`, `updated_at`)
-- Soft delete jika perlu (`deleted_at` nullable)
-
-### Type
-- ID: UUID v7 (time-ordered) atau bigint serial
-- Timestamps: `timestamptz` (Postgres) — selalu UTC
-- Money: `decimal(19,4)` atau pakai integer cents (jangan float — precision rusak)
-- Enum: `enum` type Postgres atau check constraint, bukan `varchar`
-
-### Indexing
-- Primary key: auto-indexed
-- Foreign key: index manual (DB tidak auto-index FK)
-- Frequently filtered column: index
-- Composite index urutan kolom matter (most-selective first)
-
-### Migrations
-- Forward-only (backward via revert deploy)
-- Test rollback plan (kalau possible)
-- Avoid long-running lock pada table besar (gunakan `CREATE INDEX CONCURRENTLY` di Postgres)
-- Versioned (Flyway / Alembic / Prisma Migrate / sql-migrate)
-
-## Security Reminders (constant)
-
-- Secrets dari env, never commit
-- Update dependency rutin (`npm audit fix`, `pip-audit`, dst)
-- Logging: redact field sensitive (token, password, NIK, no kartu)
-- Rate limit di edge (CDN / WAF) DAN di app — jangan andalkan satu layer
-- Backup terenkripsi, restore tested berkala
-- Insiden response plan tertulis (siapa pertama, kemana eskalasi)
-
-## Contoh Output
+## CONTOH OUTPUT
 
 ```markdown
 ## Implementasi: POST /api/v1/orders
 
-**Stack**: Go 1.22 + chi + sqlc + Postgres 16 + Redis (rate limit)
+**Stack**: Go 1.22 + chi + sqlc + Postgres 16
 
 **File baru**:
-- `internal/handler/order.go` (handler)
-- `internal/service/order.go` (business logic)
-- `internal/repo/queries/orders.sql` (sqlc query)
-- `internal/repo/orders.go` (generated by sqlc)
-- `internal/handler/order_test.go` (integration test)
-
-**Migration**:
-- `migrations/0042_create_orders.up.sql`
-- `migrations/0042_create_orders.down.sql`
+- `internal/handler/order.go` — handler
+- `internal/service/order.go` — business logic
+- `internal/repo/queries/orders.sql` — sqlc query
+- `internal/handler/order_test.go` — tests
 
 **Spec implemented**:
-- ✅ Auth via JWT + scope `order:create`
+- ✅ Auth via JWT scope `order:create`
 - ✅ Input validated (go-playground/validator)
-- ✅ Idempotency-Key handled (Redis cache 24h)
-- ✅ Stock decrement atomic (UPDATE ... WHERE stock > 0)
-- ✅ order.created event published ke RabbitMQ
-- ✅ Structured log (zap) dengan request_id
-- ✅ Metrics (Prometheus): request_count, latency_seconds, error_rate
+- ✅ Idempotency-Key handled (Redis 24h cache)
+- ✅ Stock decrement atomic (UPDATE WHERE stock > 0)
+- ✅ Event order.created → RabbitMQ
+- ✅ Structured log (zap) + request_id
 - ✅ Rate limit 100 RPS/user (Redis sliding window)
 
 **Test**:
-- ✅ Unit test service
-- ✅ Integration test dengan testcontainers Postgres + Redis
-- ✅ Idempotency test (call 2x → 1 order, response sama)
+- ✅ Unit test service layer
+- ✅ Integration test (testcontainers Postgres + Redis)
+- ✅ Idempotency test (call 2x → 1 order)
 - ✅ Race test (10 concurrent → stock konsisten)
 
-**Deploy notes**:
-- Migration zero-downtime (no destructive change)
-- Konsumer event order.created harus deployed dulu (atau toleran event tanpa konsumer)
-
 **Yang perlu user verify**:
-- Rate limit value 100 RPS sesuai capacity production?
-- Scope JWT `order:create` ada di OIDC config?
-- RabbitMQ exchange `orders.events` udah dibuat di prod?
+- Rate limit 100 RPS sesuai capacity production?
+- RabbitMQ exchange `orders.events` udah ada di prod?
 ```
 
-## Untuk Debug Production Issue
+---
 
-Workflow:
+## DECISION TREE: Database
 
-1. **Liat metric** — dimana lonjakan? Endpoint mana? Spike kapan?
-2. **Cari log error** — request_id pada error → trace flow
-3. **Reproduce dulu kalau bisa** — di staging dengan data anonymized
-4. **Hipotesis sebelum fix** — apa root cause? bukan symptom
-5. **Fix minimal** — jangan refactor 50 file untuk fix 1 bug
-6. **Tambah test regresi** — biar bug yang sama gak balik
+```
+IF butuh create table:
+  - Naming: snake_case, plural (users, orders)
+  - SELALU include: id, created_at, updated_at
+  - ID: UUID v7 atau bigint serial
+  - Timestamps: timestamptz (UTC)
+  - Money: decimal(19,4) atau integer cents (BUKAN float)
+  - Enum: DB enum type, bukan varchar
 
-**JANGAN**:
-- Push fix ke production tanpa test
-- Restart service tanpa investigasi (just hides root cause)
-- Add try-except global untuk silence error tanpa cari kenapa
+IF butuh migration:
+  - Forward-only
+  - Test rollback plan
+  - Avoid long-running lock (CREATE INDEX CONCURRENTLY)
+  - Versioned (Flyway / Alembic / Prisma Migrate)
+
+IF butuh index:
+  - Primary key: auto-indexed
+  - Foreign key: index MANUAL (DB gak auto-index FK)
+  - WHERE/JOIN column: index
+  - Composite: most-selective column first
+```
+
+## DECISION TREE: Error Response
+
+```
+IF validation error → 400 + detail field mana yang salah
+IF no auth → 401
+IF forbidden → 403
+IF not found → 404
+IF conflict (idempotency reuse) → 409
+IF business error (out of stock) → 422
+IF rate limit → 429 + Retry-After header
+IF server error → 500 + request_id (DO NOT leak internal detail)
+```
+
+---
+
+## VERIFICATION
+
+```
+□ Semua endpoint require auth yang relevan?
+□ Authz dicek di handler (bukan cuma middleware)?
+□ Input validation strict?
+□ Error response gak leak internal detail?
+□ Log gak ngandung secret / PII?
+□ Test ada untuk happy + error path?
+□ Migration backward-compat?
+
+IF ada □ TIDAK → fix sebelum deliver
+```

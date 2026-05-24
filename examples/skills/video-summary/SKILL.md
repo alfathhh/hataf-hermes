@@ -1,7 +1,7 @@
 ---
 name: video-summary
-description: Summarize video (file lokal atau URL YouTube/etc) dengan pipeline yt-dlp + ffmpeg + Whisper STT + LLM summarize. Output disertai timestamp untuk klaim penting.
-version: 1.0.0
+description: Summarize video via pipeline yt-dlp + ffmpeg + Whisper STT + LLM. Output dengan timestamp.
+version: 2.0.0
 metadata:
   hermes:
     tags: [video, audio, transcription, summary]
@@ -11,90 +11,50 @@ metadata:
 
 # Video Summary
 
-Skill untuk meringkas video lewat pipeline: download audio → transcribe → summarize. Output mencakup timestamp, jadi user bisa langsung lompat ke bagian yang relevan di video aslinya.
+## KAPAN PAKAI
 
-## Prerequisites (HARUS terinstall di sistem)
-
-Cek dulu sebelum mulai:
-
-```bash
-which yt-dlp        # https://github.com/yt-dlp/yt-dlp
-which ffmpeg
-python3 -c "import faster_whisper" 2>&1   # untuk STT lokal
+```
+IF user kasih URL YouTube/TikTok/Vimeo + minta summary → PAKAI
+IF user kasih file video lokal + minta summary → PAKAI
+IF user kasih file audio (.mp3/.wav) → PAKAI (skip download step)
+IF video tanpa audio (visual-only) → JANGAN (butuh frame analysis)
+IF live stream → JANGAN
 ```
 
-Kalau belum ada, kasih tau user untuk install:
+---
+
+## PROCEDURE (ikuti exact)
+
+### Step 1: Cek prerequisites
 
 ```bash
-# yt-dlp
-pip install --upgrade yt-dlp
-# atau: brew install yt-dlp / apt install yt-dlp
-
-# ffmpeg
-sudo apt install ffmpeg            # Linux
-brew install ffmpeg                # macOS
-
-# Whisper STT lokal (gratis, jalan di CPU/GPU)
-pip install faster-whisper
+which yt-dlp ffmpeg
+python3 -c "import faster_whisper" 2>&1
 ```
 
-JANGAN auto-install dependency tanpa konfirmasi user.
-
-## When to Use
-
-User memberikan:
-- URL YouTube / TikTok / Vimeo / dst
-- Path file video lokal (.mp4, .mkv, .webm, dst)
-- Path file audio (.mp3, .wav, .m4a) — bisa skip download step
-
-Permintaan eksplisit untuk:
-- Summary
-- Transkrip + summary
-- Cari moment spesifik di video ("kapan dia ngomong tentang X")
-- Translasi transkrip
-
-JANGAN pakai untuk:
-- Video tanpa audio (visual-only) — itu butuh frame analysis, beda alur
-- Live stream
-
-## Procedure
-
-### 1. Validasi input
-
-- Kalau URL: konfirmasi format yang yt-dlp support (cek `yt-dlp --list-extractors` kalau ragu)
-- Kalau file lokal: cek file exist, durasi (`ffprobe`)
-- Kalau durasi > 2 jam: warn user bahwa STT akan lama, tanya konfirmasi
-
-### 2. Download audio aja (lebih cepat)
-
-```bash
-# YouTube — extract audio aja
-yt-dlp -x --audio-format mp3 -o "/tmp/video-summary/%(id)s.%(ext)s" <URL>
-
-# Hasil: /tmp/video-summary/<video_id>.mp3
+```
+IF missing → kasih install command:
+  pip install --upgrade yt-dlp faster-whisper
+  sudo apt install ffmpeg
 ```
 
-Kalau file lokal sudah audio, skip langkah ini.
+### Step 2: Download audio
 
-Kalau file lokal video, extract audio:
+```
+IF input = URL:
+  yt-dlp -x --audio-format mp3 -o "/tmp/video-summary/%(id)s.%(ext)s" "[URL]"
 
-```bash
-ffmpeg -i input.mp4 -vn -acodec libmp3lame /tmp/video-summary/audio.mp3
+IF input = file video lokal:
+  ffmpeg -i [input.mp4] -vn -acodec libmp3lame /tmp/video-summary/audio.mp3
+
+IF input = file audio:
+  → skip, langsung ke Step 3
+
+IF durasi > 2 jam:
+  → warn user "STT akan lama, lanjut?"
 ```
 
-### 3. Speech-to-text dengan Whisper
-
-Pakai `faster-whisper`. Pilih model size:
-
-| Model | RAM | Kecepatan | Akurasi | Kapan pakai |
-|---|---|---|---|---|
-| `tiny` | ~1 GB | Sangat cepat | Kurang | Cuma untuk test |
-| `base` | ~1 GB | Cepat | OK | Audio jelas, bahasa Inggris |
-| `small` | ~2 GB | Sedang | Bagus | Default rekomendasi |
-| `medium` | ~5 GB | Lambat | Bagus | Bahasa Indonesia, audio noisy |
-| `large-v3` | ~10 GB | Sangat lambat | Terbaik | Akurasi prioritas, ada GPU |
-
-Skrip Python yang dipakai (lewat `terminal`):
+### Step 3: Speech-to-text (Whisper)
 
 ```python
 from faster_whisper import WhisperModel
@@ -102,102 +62,145 @@ from faster_whisper import WhisperModel
 model = WhisperModel("small", device="cpu", compute_type="int8")
 segments, info = model.transcribe("/tmp/video-summary/audio.mp3", beam_size=5)
 
-print(f"Detected language: {info.language}")
+print(f"Language: {info.language}")
 for seg in segments:
     print(f"[{seg.start:.1f}s -> {seg.end:.1f}s] {seg.text}")
 ```
 
-Output: array of `{start, end, text}` segments.
+```
+Model selection:
+IF audio jelas + English → "base" (fast)
+IF audio noisy / Bahasa Indonesia → "medium" (better accuracy)
+IF akurasi prioritas + ada GPU → "large-v3" (best)
+DEFAULT → "small" (balance speed/quality)
+```
 
-Save transkrip ke `/tmp/video-summary/<video_id>.transcript.txt`.
+### Step 4: Summarize transkrip
 
-### 4. Summarize transkrip
+```
+RULE: Setiap klaim di summary HARUS ada di transkrip
+RULE: Quote langsung ambil PERSIS dari transkrip (jangan "perbaiki")
+RULE: Timestamp HARUS dalam range durasi video
+RULE: IF kata jelas salah-dengar → flag [salah dengar?]
+```
 
-Sekarang LLM (model utama Hermes) summarize transkrip yang udah diberi timestamp.
+### Step 5: Cleanup
 
-Format output:
+```bash
+rm -rf /tmp/video-summary/
+# Kecuali user minta keep
+```
+
+---
+
+## OUTPUT TEMPLATE
 
 ```markdown
-# Summary: [Judul kalau dari yt-dlp metadata, atau "Untitled"]
+# Summary: [Judul]
 
-**Sumber**: [URL atau filename]
+**Sumber**: [URL / filename]
 **Durasi**: [HH:MM:SS]
-**Bahasa**: [hasil deteksi Whisper]
+**Bahasa**: [detected language]
 
 ## TL;DR (max 4 kalimat)
 [Paling penting]
 
 ## Topik utama
-1. [Topik A] — `[start_time]–[end_time]`
-2. [Topik B] — `[start_time]–[end_time]`
-3. [Topik C] — `[start_time]–[end_time]`
+1. [Topik A] — `[mm:ss]–[mm:ss]`
+2. [Topik B] — `[mm:ss]–[mm:ss]`
+3. [Topik C] — `[mm:ss]–[mm:ss]`
 
-## Per topik
+## Detail per topik
 
 ### [Topik A] (`[mm:ss]`)
-[2-4 kalimat ringkas. Quote langsung kalau ada statement penting:]
-> "Quote eksplisit dari transkrip" (`[mm:ss]`)
+[2-4 kalimat ringkas]
+> "[Quote dari transkrip]" (`[mm:ss]`)
 
 ### [Topik B] (`[mm:ss]`)
-...
-
-## Yang TIDAK dibahas (kalau user nanya)
-- [Hal yang user tanya tapi video gak bahas]
+[2-4 kalimat]
 
 ## Catatan
-- Transkrip otomatis (Whisper). Kemungkinan ada kata yang salah dengar — verifikasi quote langsung di video kalau krusial.
-- [Kalau ada bagian yang Whisper bilang "low confidence", flag di sini]
+- Transkrip otomatis (Whisper) — bisa ada kata yang salah dengar
+- [Flag bagian low-confidence kalau ada]
 ```
 
-### 5. Cleanup
+---
 
-Hapus file audio sementara setelah selesai:
+## CONTOH OUTPUT
 
-```bash
-rm -rf /tmp/video-summary/*.mp3 /tmp/video-summary/*.transcript.txt
+```markdown
+# Summary: "Cara Deploy Next.js ke VPS" (YouTube)
+
+**Sumber**: https://youtube.com/watch?v=abc123
+**Durasi**: 00:24:37
+**Bahasa**: Indonesian
+
+## TL;DR
+Tutorial deploy Next.js ke VPS Ubuntu menggunakan Docker + Nginx reverse proxy + SSL Let's Encrypt. Cocok untuk production small-medium.
+
+## Topik utama
+1. Setup VPS + SSH — `00:00–03:45`
+2. Install Docker + docker-compose — `03:45–08:20`
+3. Dockerfile Next.js — `08:20–14:10`
+4. Nginx reverse proxy + SSL — `14:10–20:30`
+5. CI/CD dengan GitHub Actions — `20:30–24:37`
+
+## Detail per topik
+
+### Setup VPS (`00:00`)
+Pakai Ubuntu 22.04 di DigitalOcean $6/bulan. SSH key setup, disable password auth.
+> "Jangan pernah pake password buat SSH, selalu key-based" (`01:23`)
+
+### Dockerfile Next.js (`08:20`)
+Multi-stage build: stage 1 build, stage 2 production. Final image ~150MB.
+> "Ini hasilnya 150 mega, bukan 1.2 giga kayak kalau gak multi-stage" (`12:45`)
+
+### Nginx + SSL (`14:10`)
+Certbot auto-renewal. Config proxy_pass ke container port 3000.
+
+## Catatan
+- Transkrip Whisper — beberapa nama library mungkin salah dengar
+- Timestamp approximate (±5 detik)
 ```
 
-(Kecuali user minta keep — tanya dulu.)
+---
 
-## Pitfalls
+## DECISION TREE: Video Panjang (>1 jam)
 
-### Pitfall 1: Halu quote
-
-Setelah summary, user mungkin nanya "tolong dikutip persis". STT bisa salah dengar (misal "sequel" jadi "sekuel" atau "DeepSeek" jadi "the seek"). 
-
-**Aturan**: kalau quote ditampilkan, ambil **persis dari transkrip**, jangan "perbaiki" dari pengetahuan umum. Kalau ada kata yang clearly salah-dengar, flag dengan `[salah dengar?]`.
-
-### Pitfall 2: Video bahasa campur
-
-Whisper bisa salah deteksi kalau audio dual-language (bahasa Indo dengan istilah English campur). Kalau hasil tampak aneh, coba force language:
-
-```python
-segments, info = model.transcribe(audio, language="id")
+```
+IF durasi > 1 jam:
+  → chunk transkrip per 10 menit
+  → summarize per chunk
+  → synthesis: summary-of-summaries
+  → OR: delegate_task ke subagent untuk chunk-level summary
 ```
 
-### Pitfall 3: Music / non-speech sections
+## DECISION TREE: Bahasa Campur
 
-Whisper bisa "denger" lirik music sebagai ucapan dan kasih transkrip. Kalau ada section yang clearly musical interlude, sebutkan dan skip dari summary.
+```
+IF video campur bahasa (Indo + English terms):
+  → force language: model.transcribe(audio, language="id")
+  → IF masih jelek → coba tanpa force, let Whisper detect
+```
 
-### Pitfall 4: YouTube auto-caption sebagai shortcut
+## DECISION TREE: Music Sections
 
-YouTube punya auto-caption built-in. Kalau available (cek `yt-dlp --write-auto-sub --skip-download`), itu bisa **lebih cepat** daripada Whisper, tapi kualitas variable. Pakai sebagai fallback kalau Whisper terlalu lambat di hardware lo.
+```
+IF ada musik/jingle tanpa speech:
+  → skip dari summary
+  → flag: "[mm:ss–mm:ss] musik, tidak ada speech"
+```
 
-### Pitfall 5: Konten yang melanggar TOS
+---
 
-Jangan transkrip video yang user JELAS-JELAS gak punya hak akses ke transkripnya (misal scrape ribuan video private). Skill ini untuk konten yang user own, public domain, atau fair use research.
+## VERIFICATION
 
-## Verification
+```
+□ Setiap klaim di summary ada di transkrip?
+□ Timestamp valid (dalam range durasi)?
+□ Quote exact match dari transkrip?
+□ Caveat "STT bisa salah" ada?
+□ Gak ada info yang gw tambahin dari luar video?
 
-Sebelum kirim summary:
-
-1. Apakah setiap claim di summary ada di transkrip? (sample 2-3)
-2. Apakah timestamp valid (dalam range durasi video)?
-3. Apakah quote langsung exact match dengan transkrip?
-4. Apakah ada caveat tentang STT bisa salah dengar?
-
-## Untuk video panjang (> 1 jam)
-
-- Transkrip bisa puluhan ribu token, overflow context.
-- Strategy: chunk transkrip per 5-10 menit, summarize per chunk, lalu summary-of-summaries.
-- Atau pakai delegate_task — spawn subagent dengan model murah untuk chunk-level summary, model utama untuk synthesis.
+IF ada □ TIDAK → fix
+```

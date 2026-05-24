@@ -1,7 +1,7 @@
 ---
 name: claude-superpowers
-description: Replika workflow Claude Superpowers di Hermes — extended thinking, artifacts, citations, vision, code execution, memory dalam satu alur terintegrasi. Panggil untuk task kompleks yang butuh multi-capability.
-version: 1.0.0
+description: Mode full-power — extended thinking, artifacts, citations, vision, code execution, memory dalam satu alur. Panggil untuk task kompleks multi-capability.
+version: 2.0.0
 metadata:
   hermes:
     tags: [reasoning, artifacts, citations, vision, code-execution, multi-capability]
@@ -10,253 +10,217 @@ metadata:
 
 # Claude Superpowers (Hermes Edition)
 
-Skill meta yang menggabungkan semua kapabilitas Hermes menjadi satu alur kerja terintegrasi — mereplikasi pengalaman Claude Superpowers (Extended Thinking, Artifacts, Web Search, Vision, Code Execution, Memory, Citations) di ekosistem Hermes.
-
-## When to Use
-
-Panggil skill ini untuk task yang butuh **kombinasi kemampuan**:
-- "Analisa screenshot app ini, tulis improvement plan, implementasi, dan test"
-- "Research topik X, tulis report dengan citation, generate chart dari data"
-- "Baca PDF ini, extract data, run analisis Python, output summary"
-- "Pahami codebase ini, propose refactor, implement, verify"
-
-Atau ketika user bilang: "kerja seperti Claude" / "full power" / "deep work mode"
-
-## Capability Map (apa yang tersedia)
-
-### 1. Extended Thinking → `/reasoning high` + structured decomposition
-
-Sebelum menjawab task kompleks:
+## KAPAN AKTIF
 
 ```
-INTERNAL CHECKLIST:
-□ Apakah task ini butuh decomposition? (>1 sub-problem)
-□ Apakah ada hidden assumptions yang harus di-surface?
-□ Apakah ada multiple valid approaches?
-□ Apakah output butuh verification?
-
-Kalau ≥2 checked → decompose dulu, jangan langsung eksekusi.
+IF user bilang "kerja seperti Claude" OR "deep work" OR "full analysis" OR "full power" → AKTIF
+IF task butuh KOMBINASI tools (vision + search + code + write) → AKTIF
+IF task sederhana (translate, format, quick Q&A) → JANGAN (overkill)
 ```
 
-**Action**: Set reasoning effort ke high/xhigh di awal task kompleks:
-```
-/reasoning high
-```
+---
 
-Lalu decompose task eksplisit (lihat skill `deep-analysis` untuk framework detail).
+## PROCEDURE (ikuti exact, step by step)
 
-### 2. Artifacts → File Output
-
-Claude punya "Artifacts" panel untuk code/doc. Di Hermes, equivalent = **tulis ke file**.
-
-Aturan:
-- Code output > 20 baris → `write_file` ke path yang masuk akal
-- Document/report → `write_file` ke `~/output/` atau working directory
-- HTML preview → tulis file, kasih path ke user
-
-**Pattern:**
-
-```python
-# Instead of pasting 200 lines in chat:
-write_file(
-    path="output/analysis-report.md",
-    content="..."
-)
-# Then tell user: "Report tersimpan di output/analysis-report.md"
-```
-
-Untuk output yang user mau langsung liat di chat: kasih summary di chat + full version di file.
-
-### 3. Web Search + Citations → `web_search` + `web_extract`
-
-Untuk setiap klaim faktual:
-
-1. `web_search` → ambil top results
-2. `web_extract` → fetch detail dari sumber primer
-3. Cite per klaim: `[sumber](URL)`
-4. Kalau gak ketemu → "tidak ditemukan di pencarian"
-
-**JANGAN:**
-- Skip search dan jawab dari "pengetahuan umum" kalau pertanyaannya time-sensitive
-- Fabricate URL
-
-**Lihat skill `research-citation` untuk detail lengkap.**
-
-### 4. Vision → `vision_analyze`
-
-Saat user attach gambar / screenshot / diagram:
-
-```python
-vision_analyze(
-    image=attached_image,
-    prompt="Describe this UI in detail: layout, components, colors, text content, any issues visible"
-)
-```
-
-Gunakan untuk:
-- Screenshot review (bug visual, UI critique)
-- Diagram understanding (architecture, flowchart)
-- Document scan (receipt, handwriting, whiteboard)
-- Chart/graph data extraction
-
-**Limitations:**
-- Vision model = auxiliary (Gemini Flash / GPT-4o), bukan model utama
-- Bisa miss detail kecil — kalau kritis, minta user confirm
-
-### 5. Code Execution → `execute_code` tool
-
-Run Python langsung di sandbox:
-
-```python
-execute_code("""
-import pandas as pd
-import json
-
-# Load data
-data = json.loads(open('/tmp/data.json').read())
-df = pd.DataFrame(data)
-
-# Analysis
-summary = df.describe()
-print(summary.to_markdown())
-
-# Plot
-import matplotlib.pyplot as plt
-df['price'].plot(kind='line')
-plt.savefig('/tmp/price_chart.png')
-print("Chart saved to /tmp/price_chart.png")
-""")
-```
-
-**Kapan pakai code execution vs terminal:**
-- Code execution: data processing, math, charting, validation logic
-- Terminal: system commands, git, file management, install packages
-
-### 6. Memory → Persistent across sessions
-
-Setiap kali task selesai, evaluate:
+### Step 1: Decompose task
 
 ```
-MEMORY CHECK:
-- Apakah ada preferensi user baru yang terungkap? → memory(target="user", ...)
-- Apakah ada fakta environment/project yang learned? → memory(target="memory", ...)
-- Apakah ada workflow yang berhasil yang worth saving as skill? → skill_manage(action="create", ...)
+SEBELUM execute apa-apa:
+1. TULIS sub-tasks yang harus dikerjain
+2. IDENTIFIKASI tools yang dibutuhkan per sub-task
+3. PLAN urutan execution
+
+DO NOT: langsung execute tanpa decompose
 ```
 
-Proaktif save, jangan tunggu user minta "remember this".
+### Step 2: Execute per capability
 
-### 7. Custom Style → Adapt dari SOUL.md + USER.md
+```
+IF butuh understand image/screenshot:
+  → vision_analyze(image, prompt="Describe in detail: layout, components, text, issues")
 
-Baca USER.md dan SOUL.md — ikuti style yang didefinisikan. Jangan default ke verbose/formal kalau user prefer concise/casual.
+IF butuh factual information:
+  → web_search("[query]") + web_extract(url)
+  → CITE per klaim: [sumber](URL)
 
-### 8. Batch/Parallel → `delegate_task`
+IF butuh data processing / math / chart:
+  → execute_code(python_code)
+  → Pastikan code error-free sebelum present
 
-Untuk task yang bisa dipecah ke independent subtasks:
+IF butuh output >20 baris code/doc:
+  → write_file(path, content)
+  → Chat: kasih summary + path file
 
-```python
-# Research 3 topik paralel
-delegate_task(prompt="Research pricing trends for product A", ...)
-delegate_task(prompt="Research competitor features for product B", ...)
-delegate_task(prompt="Research market size for segment C", ...)
+IF butuh parallel research:
+  → delegate_task per sub-topic (independent)
+  → Synthesize results
 
-# Lalu synthesize results
+IF butuh reasoning mendalam:
+  → /reasoning high
+  → Decompose structured (bukan stream-of-consciousness)
 ```
 
-### 9. Prompt Caching (automatic)
+### Step 3: Combine results
 
-Hermes otomatis cache prefix system prompt (SOUL.md, tools, skills list). Lo gak perlu ngapa-ngapain. Tapi:
-- Jangan `/compress` terlalu sering (breaks cache)
-- Session yang long-running = cheaper per turn (prefix reused)
-
-## Integrated Workflow (semua digabung)
-
-Contoh task: "Analisa competitor app dari screenshot + web research, tulis strategic recommendation"
-
-### Step 1: Understand (Vision + Decompose)
 ```
-1. vision_analyze(screenshot) → understand current state
-2. Decompose task:
-   - Sub-task A: identify competitor features from screenshot
-   - Sub-task B: web research competitor positioning
-   - Sub-task C: gap analysis
-   - Sub-task D: strategic recommendation
+1. Gather semua sub-task results
+2. Check consistency (gak kontradiksi antar sub-task)
+3. Synthesize into unified output
+4. Verify: setiap klaim punya source/evidence
 ```
 
-### Step 2: Research (Web Search + Citations)
-```
-3. web_search("competitor X features pricing 2026")
-4. web_extract(competitor_url) → structured data
-5. web_search("market trends [domain] 2026")
-6. Compile evidence with [sources]
-```
+### Step 4: Memory check
 
-### Step 3: Analyze (Code Execution + Extended Thinking)
 ```
-7. execute_code("""
-   # Score comparison matrix
-   features = {...}
-   scores = calculate_weighted_scores(features)
-   generate_radar_chart(scores)
-""")
-8. /reasoning high → deep analysis on findings
+SETELAH task selesai:
+IF ada preferensi user baru → memory(target="user", ...)
+IF ada fakta environment baru → memory(target="memory", ...)
+IF ada workflow baru yang recurring → propose skill baru
 ```
 
-### Step 4: Output (Artifacts + Memory)
+---
+
+## CAPABILITY MAP (quick reference)
+
+| Capability | Hermes equivalent | Tool |
+|---|---|---|
+| Extended Thinking | /reasoning high + decomposition | structured analysis |
+| Artifacts | write_file() | save to path |
+| Web Search + Citation | web_search + web_extract | cite per klaim |
+| Vision | vision_analyze | image/screenshot |
+| Code Execution | execute_code / terminal | Python sandbox |
+| Memory | memory() | persistent |
+| Batch/Parallel | delegate_task | independent subtasks |
+
+---
+
+## OUTPUT TEMPLATE: Full Analysis
+
+```markdown
+# [Task Title]
+
+## Plan
+1. [Sub-task A] — tool: [X]
+2. [Sub-task B] — tool: [Y]
+3. [Sub-task C] — tool: [Z]
+
+## Results
+
+### [Sub-task A]
+[result + source]
+
+### [Sub-task B]
+[result + source]
+
+### [Sub-task C]
+[result + source]
+
+## Synthesis
+[Combined insight, 3-5 kalimat]
+
+## Files Created
+- `path/file.md` — [description]
+
+## What I Learned (for memory)
+- [fact/preference to remember]
 ```
-9. write_file("output/competitor-analysis.md", full_report)
-10. Chat summary: TL;DR + key recommendations
-11. memory(add, "User's product competes in [space], main competitors are X, Y, Z")
+
+---
+
+## CONTOH OUTPUT
+
+```markdown
+# Competitor Analysis: Coffee App
+
+## Plan
+1. Vision: analyze screenshot competitor app
+2. Web: research competitor positioning + pricing
+3. Code: score comparison matrix + radar chart
+4. Write: full report to file
+
+## Results
+
+### 1. Screenshot Analysis (vision)
+- Competitor uses tab navigation (Home, Menu, Rewards, Profile)
+- Color scheme: dark green + cream (Starbucks-like)
+- Key feature: AR cup customizer prominent on home
+- Missing: no dark mode, no accessibility indicators
+
+### 2. Web Research
+- Competitor X: 500K MAU, avg order Rp 45K [source](https://...)
+- Market growing 15% YoY in Indonesia [source](https://...)
+- Main pain point users report: slow delivery tracking
+
+### 3. Comparison Matrix
+📁 Chart saved: output/competitor-radar.png
+- Our app scores higher on: delivery speed, price
+- Competitor scores higher on: UX polish, rewards program
+
+## Synthesis
+Competitor's main advantage is UX polish and rewards gamification.
+Our advantage: delivery speed + lower price point.
+Quick wins: add rewards program (3 week sprint), improve onboarding flow.
+
+## Files Created
+- `output/competitor-analysis.md` — full 2-page report
+- `output/competitor-radar.png` — radar chart comparison
+
+## Memory Updated
+- User's product competes in coffee delivery space, Jakarta market
+- Main competitors: X, Y, Z
 ```
 
-### Step 5: Verify
+---
+
+## QUALITY GATES (per capability)
+
 ```
-12. Self-check:
-    - Setiap klaim ada citation?
-    - Screenshot interpretation accurate?
-    - Angka dari code execution consistent?
-    - Recommendation conditional (bukan absolutist)?
+Extended Thinking: output HARUS structured (bukan stream)
+Artifacts/Files: HARUS runnable/viewable tanpa edit
+Web Search: MINIMUM 2 sources per factual claim
+Vision: acknowledge confidence ("clearly shows X" vs "appears to be Y")
+Code Execution: HARUS error-free (test before present)
+Memory: ONLY save things useful > 1 week
+Citations: URL HARUS dari search results turn ini
 ```
 
-## Mode Activation
+---
 
-Kalau user bilang salah satu dari ini, activate full superpowers mode:
+## DECISION TREE: When to Use Which Tool
 
-- "kerja seperti Claude"
-- "deep work"
-- "full analysis"
-- "gunakan semua tools"
-- `/claude-superpowers`
+```
+IF need current info → web_search + web_extract
+IF need understand image → vision_analyze
+IF need calculate/chart → execute_code (Python)
+IF need save output → write_file
+IF need parallel work → delegate_task
+IF need deep reasoning → /reasoning high
+IF need verify code → terminal (run test)
+```
 
-Response pertama harus decomposition + plan, BUKAN langsung eksekusi.
+---
 
-## Per-Capability Quality Gates
+## LIMITATIONS (jujur)
 
-| Capability | Quality gate |
-|---|---|
-| Extended Thinking | Output harus structured (bukan stream-of-consciousness) |
-| Artifacts | File harus runnable/viewable tanpa edit |
-| Web Search | Minimum 2 sources per factual claim |
-| Vision | Acknowledge confidence level ("clearly shows X" vs "appears to be Y") |
-| Code Execution | Code harus error-free (test before present) |
-| Memory | Only save things useful > 1 week from now |
-| Citations | URL must come from actual search results THIS turn |
-| Delegation | Subtasks must be truly independent |
+```
+1. Reasoning quality = limited by model (Flash ≠ Opus level)
+2. Web search = 2-5 detik latency
+3. File output = no live preview (user buka file sendiri)
+4. Vision = auxiliary model, bisa miss detail kecil
+5. Memory = limited char (2200 char max)
+```
 
-## What This Skill CANNOT Do (jujur)
+---
 
-1. **Match Opus reasoning quality** — kalau model lo DeepSeek V4 Flash, reasoning ceiling = Flash level. Skill ini optimize workflow, bukan upgrade model.
-2. **Constitutional AI behavior** — Claude punya trained refusal patterns. Hermes punya SOUL.md rules, tapi enforcement depends on model compliance.
-3. **Writing voice identical to Claude** — setiap model punya characteristic voice. Skill ini enforce structure, bukan mimic Claude prose.
-4. **Real-time streaming artifacts** — Hermes tulis file, bukan render live preview di side panel.
-5. **Sub-100ms web search** — depends on Firecrawl/Tavily latency, biasanya 2-5 detik.
+## VERIFICATION
 
-## Verification (before delivering output)
+```
+□ Task decomposed sebelum execute?
+□ Tools yang relevan dipakai (bukan cuma text generation)?
+□ Factual claims punya citation?
+□ Code output tested (no errors)?
+□ File artifacts valid?
+□ Uncertainty flagged?
 
-1. ✅ Task decomposed sebelum eksekusi?
-2. ✅ Tools yang relevan dipakai (bukan cuma text generation)?
-3. ✅ Factual claims punya citation?
-4. ✅ Code output tested (no errors)?
-5. ✅ File artifacts valid dan accessible?
-6. ✅ Memory updated kalau ada insight baru?
-7. ✅ Output style match USER.md preferences?
-8. ✅ Uncertainty flagged kalau ada?
+IF ada □ TIDAK → fix before deliver
+```

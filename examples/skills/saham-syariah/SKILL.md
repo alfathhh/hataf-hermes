@@ -1,7 +1,7 @@
 ---
 name: saham-syariah
-description: Analisis dan screening saham syariah Indonesia (IDX). Filter berdasarkan Daftar Efek Syariah (DES) OJK, analisis fundamental (PER/PBV/DY/DER), dan monitoring harga. BUKAN financial advice — data + screening only.
-version: 1.0.0
+description: Screening dan analisis saham syariah Indonesia (IDX). Filter DES OJK, analisis fundamental. BUKAN financial advice — data + screening only.
+version: 2.0.0
 metadata:
   hermes:
     tags: [saham, syariah, idx, investment, screening, fundamental, ojk]
@@ -11,337 +11,225 @@ metadata:
 
 # Analisis Saham Syariah Indonesia
 
-Skill untuk screening dan analisis saham yang **masuk Daftar Efek Syariah (DES) OJK**. Output = data terstruktur + screening result. BUKAN rekomendasi beli/jual.
-
-## DISCLAIMER (WAJIB ditampilkan di setiap output)
+## DISCLAIMER (WAJIB di setiap output)
 
 ```
-⚠️ DISCLAIMER: Output ini BUKAN nasihat investasi. Ini adalah hasil screening
-otomatis berdasarkan data publik. Selalu lakukan riset mandiri (DYOR) dan
-konsultasi dengan penasihat keuangan berlisensi sebelum mengambil keputusan
-investasi. Past performance ≠ future results.
+⚠️ DISCLAIMER: Output ini BUKAN nasihat investasi. Hasil screening otomatis
+berdasarkan data publik. DYOR. Konsultasi penasihat keuangan berlisensi.
+Past performance ≠ future results.
 ```
 
-## When to Use
+---
 
-- User nanya "saham syariah apa yang bagus?"
-- User minta screening saham dengan kriteria tertentu
-- User minta analisis fundamental saham tertentu
-- User minta cek apakah saham X masuk DES
-- Cronjob monitoring harga saham syariah
-- Alert kalau saham target masuk/keluar DES
+## KAPAN PAKAI
 
-JANGAN pakai untuk:
-- Rekomendasi beli/jual (skill ini BUKAN advisor)
-- Analisis teknikal (candlestick, support/resistance) — itu butuh charting tool terpisah
-- Saham luar negeri (skill ini fokus IDX)
-- Crypto/forex (bukan saham)
+```
+IF user minta screening saham syariah → PAKAI
+IF user minta analisis fundamental saham IDX → PAKAI
+IF user minta cek apakah saham masuk DES → PAKAI
+IF user minta rekomendasi beli/jual → JANGAN (bilang "gak bisa recommend")
+IF user minta prediksi harga → JANGAN (impossible)
+IF user minta saham luar negeri → JANGAN (skill ini fokus IDX)
+```
 
-## Sumber Data (HANYA dari sumber resmi/kredibel)
+---
 
-| Data | Sumber primer | URL |
-|------|---------------|-----|
-| **Daftar Efek Syariah (DES)** | OJK | https://www.ojk.go.id/id/kanal/syariah/data-dan-statistik/daftar-efek-syariah/ |
-| **Indeks JII (Jakarta Islamic Index)** | IDX | https://www.idx.co.id/id/data-pasar/indeks-saham/ |
-| **Indeks JII70** | IDX | https://www.idx.co.id/id/data-pasar/indeks-saham/ |
-| **Indeks ISSI** | IDX | https://www.idx.co.id/id/data-pasar/indeks-saham/ |
-| **Data fundamental (PER, PBV, dll)** | RTI Business / Sectors.app / IDX | https://www.rti.co.id/ atau https://sectors.app/ |
-| **Harga real-time** | IDX / Yahoo Finance (ID) | https://finance.yahoo.com/ (append .JK untuk IDX) |
-| **Statistik pasar syariah** | OJK | https://ojk.go.id/id/kanal/syariah/data-dan-statistik/saham-syariah/ |
+## PROCEDURE (ikuti exact)
 
-**JANGAN** ambil data dari:
-- Blog random / forum saham tanpa verifikasi
-- Grup Telegram "signal"
-- Situs yang claim "guaranteed profit"
-
-## Procedure
-
-### 1. Klarifikasi kebutuhan user
-
-Tanya dulu:
-- "Lo mau screening (cari saham baru) atau analisis (saham tertentu)?"
-- "Kriteria apa? (dividen tinggi? undervalued? growth? low debt?)"
-- "Timeframe investasi? (short term trading vs long term hold?)"
-- "Budget range? (blue chip aja atau termasuk second liner?)"
-
-### 2. Validasi status syariah
-
-**LANGKAH PERTAMA SEBELUM ANALISIS APAPUN**: cek apakah saham masuk DES.
+### Step 1: Validasi status syariah (LANGKAH PERTAMA, WAJIB)
 
 ```python
-# Cek DES terkini dari OJK
-result = web_extract(
+# Cek DES dari OJK
+web_extract(
     url="https://www.ojk.go.id/id/kanal/syariah/data-dan-statistik/daftar-efek-syariah/",
-    prompt="Extract daftar terbaru Keputusan DES (Daftar Efek Syariah). Ambil: nomor SK, tanggal berlaku, jumlah efek. Cari link download PDF terbaru."
+    prompt="Extract SK DES terbaru: nomor, tanggal berlaku, jumlah efek"
 )
 ```
 
-Kalau saham TIDAK ada di DES:
 ```
-❌ [KODE] TIDAK masuk Daftar Efek Syariah (DES) periode [terbaru].
-Saham ini tidak memenuhi kriteria syariah OJK. Tidak dilanjutkan analisis.
+IF saham TIDAK di DES:
+  OUTPUT: "❌ [KODE] TIDAK masuk DES. Tidak dilanjutkan analisis."
+  STOP. Jangan lanjut.
+
+IF saham di DES:
+  → lanjut Step 2
 ```
 
-STOP di sini. Jangan lanjut analisis kalau gak syariah.
-
-### 3. Kriteria syariah (untuk edukasi user)
-
-Per regulasi OJK, saham masuk DES kalau memenuhi:
-
-**Kriteria kualitatif:**
-- Emiten tidak melakukan kegiatan usaha yang bertentangan dengan prinsip syariah:
-  - ❌ Perjudian
-  - ❌ Perdagangan yang dilarang (gharar, maysir)
-  - ❌ Jasa keuangan ribawi (bank konvensional, asuransi konvensional)
-  - ❌ Produksi/distribusi barang haram (alkohol, babi, rokok — note: rokok kontroversial, cek DES aktual)
-  - ❌ Hiburan yang bertentangan dengan syariah
-
-**Kriteria kuantitatif:**
-- Total utang berbasis bunga / total aset ≤ 45%
-- Pendapatan non-halal / total pendapatan ≤ 10%
-
-> Catatan: kriteria di atas berdasarkan regulasi OJK yang gw ketahui. **Cek SK DES terbaru** untuk konfirmasi — bisa berubah.
-
-### 4. Ambil data fundamental
-
-Untuk saham yang SUDAH dikonfirmasi syariah:
+### Step 2: Ambil data fundamental
 
 ```python
-# Ambil dari RTI Business atau Yahoo Finance
-result = web_extract(
-    url="https://finance.yahoo.com/quote/BBRI.JK/",
-    prompt="Extract: harga terakhir, market cap, PER (trailing), PBV, dividend yield, 52-week high/low, volume rata-rata"
+# Yahoo Finance
+web_extract(
+    url="https://finance.yahoo.com/quote/[KODE].JK/",
+    prompt="Extract: harga, market cap, PER, PBV, dividend yield, 52-week high/low"
+)
+
+# ATAU Sectors.app (lebih lengkap untuk IDX)
+web_extract(
+    url="https://sectors.app/id/stocks/[KODE]",
+    prompt="Extract: PER, PBV, ROE, ROA, DER, DY, EPS growth, revenue growth"
 )
 ```
 
-Atau dari Sectors.app (lebih lengkap untuk IDX):
-
-```python
-result = web_extract(
-    url="https://sectors.app/id/stocks/BBRI",
-    prompt="Extract data fundamental: PER, PBV, ROE, ROA, DER, dividend yield, EPS growth, revenue growth"
-)
+```
+IF data gak ketemu → bilang "data tidak tersedia", DO NOT perkirakan
+IF angka dari 2 sumber beda → flag discrepancy
 ```
 
-### 5. Framework screening
+### Step 3: Screening criteria
 
-#### Screening: Value (undervalued)
-| Metrik | Kriteria "murah" | Catatan |
-|--------|-----------------|---------|
-| PER | < 15x | Bandingkan vs rata-rata sektoral |
-| PBV | < 1.5x | Di bawah 1x = sangat murah ATAU ada masalah |
-| DY (Dividend Yield) | > 4% | Konsisten minimal 3 tahun |
-| PEG Ratio | < 1 | PER / EPS growth rate |
+```
+VALUE (undervalued):
+- PER < 15x (vs rata-rata sektor)
+- PBV < 1.5x
+- DY > 4% (konsisten 3 tahun)
 
-#### Screening: Quality (fundamental kuat)
-| Metrik | Kriteria "bagus" | Catatan |
-|--------|-----------------|---------|
-| ROE | > 15% | Konsisten 3-5 tahun |
-| DER (Debt to Equity) | < 1.0 | Untuk syariah, utang ribawi < 45% aset |
-| Revenue growth | > 10% YoY | Minimal 2-3 tahun berturut |
-| EPS growth | > 10% YoY | Konsisten |
-| Free Cash Flow | Positif | Minimal 3 tahun terakhir |
+QUALITY (fundamental kuat):
+- ROE > 15% (konsisten 3-5 tahun)
+- DER < 1.0
+- Revenue growth > 10% YoY
+- Free Cash Flow positif
 
-#### Screening: Syariah-specific
-| Metrik | Batas syariah |
-|--------|--------------|
-| Interest-bearing debt / Total assets | ≤ 45% |
-| Non-halal income / Total revenue | ≤ 10% |
+SYARIAH-SPECIFIC:
+- Interest-bearing debt / total assets ≤ 45%
+- Non-halal income / total revenue ≤ 10%
+- IF DER 40-44% → ⚠️ FLAG "mendekati batas, risiko keluar DES"
+```
 
-### 6. Format output analisis
+### Step 4: Output
+
+---
+
+## OUTPUT TEMPLATE: Analisis Individual
 
 ```markdown
-## Analisis Saham Syariah: [KODE] — [Nama Perusahaan]
+## Analisis Saham Syariah: [KODE] — [Nama]
 
-⚠️ DISCLAIMER: Bukan nasihat investasi. Data screening otomatis. DYOR.
+⚠️ DISCLAIMER: Bukan nasihat investasi. DYOR.
 
 ### Status Syariah
-✅ Masuk DES OJK Periode [X] (SK No. [Y], berlaku [tanggal])
-✅ Masuk indeks: [JII / JII70 / ISSI] — sebutkan mana yang applicable
+✅ Masuk DES OJK Periode [X] (SK No. [Y])
+✅ Indeks: [JII / JII70 / ISSI]
 
-### Data Harga
+### Harga
 | Metrik | Nilai |
 |--------|-------|
-| Harga terakhir | Rp X.XXX |
-| 52-week high | Rp X.XXX |
-| 52-week low | Rp X.XXX |
+| Harga terakhir | Rp X |
+| 52-week high | Rp X |
+| 52-week low | Rp X |
 | Market cap | Rp X T |
-| Volume rata-rata | X juta lembar |
 
 ### Fundamental
-| Metrik | Nilai | vs Sektor | Penilaian |
-|--------|-------|-----------|-----------|
-| PER | Xx | rata-rata sektor Yx | [Murah/Wajar/Mahal] |
-| PBV | Xx | rata-rata sektor Yx | [Murah/Wajar/Mahal] |
-| ROE | X% | — | [Bagus/Cukup/Kurang] |
-| DER | Xx | — | [Aman/Perlu perhatian] |
-| DY | X% | — | [Menarik/Biasa] |
-| EPS Growth (YoY) | X% | — | — |
+| Metrik | Nilai | Penilaian |
+|--------|-------|-----------|
+| PER | Xx | [Murah/Wajar/Mahal] |
+| PBV | Xx | [Murah/Wajar/Mahal] |
+| ROE | X% | [Bagus/Cukup] |
+| DER | Xx | [Aman/Perlu perhatian] |
+| DY | X% | [Menarik/Biasa] |
 
-### Screening Result
-- Value score: [★★★☆☆] — [alasan singkat]
-- Quality score: [★★★★☆] — [alasan singkat]
-- Syariah compliance: ✅ / ⚠️ mendekati batas
-
-### Risiko yang teridentifikasi
-1. [Risiko 1 — misal: DER mendekati batas 45% syariah]
-2. [Risiko 2 — misal: revenue turun 2 kuartal terakhir]
-3. [Risiko 3 — misal: sektor cyclical, sensitif suku bunga]
-
-### Catatan
-- Data diambil [tanggal], bisa sudah berubah
-- DES di-review OJK tiap Mei dan November — status syariah bisa berubah
-- [Hal lain yang perlu user cek manual]
+### Risiko
+1. [Risiko 1]
+2. [Risiko 2]
 
 ### Sumber
-- [URL 1] (diakses [tanggal])
-- [URL 2] (diakses [tanggal])
+- [URL] (diakses [tanggal])
 ```
 
-### 7. Screening batch (cari saham baru)
-
-Kalau user minta "cariin saham syariah yang bagus":
-
-```python
-# Step 1: Ambil konstituent JII (30 saham paling likuid syariah)
-result = web_extract(
-    url="https://www.idx.co.id/id/data-pasar/indeks-saham/",
-    prompt="Extract daftar konstituent Jakarta Islamic Index (JII) terbaru: kode saham dan nama perusahaan"
-)
-
-# Step 2: Untuk top candidates, ambil fundamental satu-satu
-# (pakai delegate_task kalau mau paralel)
-```
-
-Output screening batch:
+## OUTPUT TEMPLATE: Screening Batch
 
 ```markdown
 ## Screening Saham Syariah — [Tanggal]
 
-**Kriteria**: [yang user minta, misal: DY > 4%, PER < 15, ROE > 15%]
-**Universe**: JII (30 saham) / JII70 (70 saham) / ISSI (semua syariah)
+**Kriteria**: [yang user minta]
+**Universe**: [JII / JII70 / ISSI]
 **Lolos filter**: [N] saham
 
-| # | Kode | Nama | PER | PBV | ROE | DY | DER | Score |
-|---|------|------|-----|-----|-----|-----|-----|-------|
-| 1 | XXXX | ... | ... | ... | ... | ... | ... | ★★★★★ |
-| 2 | YYYY | ... | ... | ... | ... | ... | ... | ★★★★☆ |
-| ... |
+| # | Kode | Nama | PER | PBV | ROE | DY | DER |
+|---|------|------|-----|-----|-----|-----|-----|
+| 1 | XXXX | ... | ... | ... | ... | ... | ... |
+| 2 | YYYY | ... | ... | ... | ... | ... | ... |
 
-⚠️ DISCLAIMER: Bukan rekomendasi. Screening otomatis berdasarkan kriteria numerik.
-Selalu riset mandiri sebelum investasi.
+⚠️ DISCLAIMER: Screening otomatis. Bukan rekomendasi. DYOR.
 ```
 
-## Untuk Cronjob
+---
 
-### Monitor harga saham watchlist
+## CONTOH OUTPUT
+
+```markdown
+## Analisis Saham Syariah: TLKM — Telkom Indonesia
+
+⚠️ DISCLAIMER: Bukan nasihat investasi. DYOR.
+
+### Status Syariah
+✅ Masuk DES OJK Periode Mei 2026
+✅ Indeks: JII, JII70, ISSI
+
+### Harga
+| Metrik | Nilai |
+|--------|-------|
+| Harga terakhir | Rp 3.850 |
+| 52-week high | Rp 4.200 |
+| 52-week low | Rp 3.100 |
+| Market cap | Rp 381 T |
+
+### Fundamental
+| Metrik | Nilai | Penilaian |
+|--------|-------|-----------|
+| PER | 14.2x | Wajar (sektor telco avg 15x) |
+| PBV | 2.8x | Wajar |
+| ROE | 19.7% | Bagus |
+| DER | 0.52x | Aman (jauh dari batas 45%) |
+| DY | 4.8% | Menarik |
+
+### Risiko
+1. Revenue growth melambat (5% vs 8% tahun lalu)
+2. Kompetisi harga data dari Starlink entry
+3. CAPEX tinggi untuk fiber expansion
+
+### Sumber
+- https://finance.yahoo.com/quote/TLKM.JK/ (diakses 24 Mei 2026)
+- https://sectors.app/id/stocks/TLKM (diakses 24 Mei 2026)
+```
+
+---
+
+## DECISION TREE: User Minta Rekomendasi
 
 ```
-/cron add "0 16 * * 1-5" "Cek harga penutupan hari ini untuk saham: BBRI, TLKM, UNVR, ANTM (semua .JK di Yahoo Finance). Bandingkan dengan ~/.hermes/cron/output/saham-syariah/watchlist.json. Kalau ada yang naik/turun >3% hari ini, kirim alert ke Telegram dengan format: '📊 [KODE] [naik/turun] [X%] → Rp [harga]. Volume: [X]M.' Update watchlist.json." --skill saham-syariah --name "Saham Syariah Daily"
+IF user bilang "saham apa yang bagus buat dibeli?":
+  → "Gw gak bisa recommend beli/jual. Yang bisa gw lakuin: screening berdasarkan kriteria lo. Mau screening dengan kriteria apa? (DY tinggi? PER murah? ROE bagus?)"
+
+IF user push "pasti untung":
+  → "Gak ada saham yang pasti untung. Saham bisa turun 50% walaupun syariah. Yang bisa gw kasih: data + screening. Keputusan di tangan lo."
+
+IF user minta target harga:
+  → "Gw gak bisa prediksi harga. Yang bisa: kasih data historis + fundamental. Untuk target harga, konsultasi analis berlisensi."
 ```
 
-### Alert DES update (2x setahun)
+## DECISION TREE: Indeks
 
 ```
-/cron add "0 9 1 5,11 *" "Cek halaman OJK Daftar Efek Syariah (https://www.ojk.go.id/id/kanal/syariah/data-dan-statistik/daftar-efek-syariah/) apakah ada SK DES baru. Kalau ada update, kirim ke Telegram: 'DES baru terbit: [No SK], berlaku [tanggal]. Cek apakah saham watchlist masih masuk.'" --skill saham-syariah --name "DES Update Check"
-```
-
-### Weekly screening
-
-```
-/cron add "0 20 * * 5" "Jalankan screening saham JII dengan kriteria: PER < 15, PBV < 2, ROE > 12%, DY > 3%. Kirim top 5 result ke Telegram." --skill saham-syariah --name "Weekly Syariah Screen"
-```
-
-## Pitfalls
-
-### Pitfall 1: Saham "syariah" tapi mendekati batas
-
-Beberapa saham masuk DES tapi DER-nya 40-44% (batas 45%). Ini berisiko keluar di review DES berikutnya. **Flag ini eksplisit** di output.
-
-### Pitfall 2: DES itu lagging
-
-DES di-review 2x setahun (Mei dan November). Di antara review, emiten bisa berubah fundamental (ambil utang baru, mulai bisnis non-halal) tapi masih "secara resmi" di DES sampai review berikutnya. **Cek laporan keuangan terbaru** kalau ragu.
-
-### Pitfall 3: Halu angka fundamental
-
-LLM SANGAT sering halu angka keuangan. Mitigasi:
-- SELALU ambil dari tool (`web_extract` / `web_search`), BUKAN dari memori
-- Cross-check: kalau PER Yahoo beda jauh dari RTI → flag discrepancy
-- Kalau data gak ketemu → bilang "data tidak tersedia", JANGAN perkirakan
-
-### Pitfall 4: Confuse JII vs ISSI vs DES
-
-| Istilah | Artinya |
-|---------|---------|
-| **DES** | Daftar lengkap SEMUA efek yang qualify syariah (ratusan saham) |
-| **ISSI** | Indeks semua saham DES yang listing di IDX |
-| **JII70** | 70 saham syariah paling likuid |
-| **JII** | 30 saham syariah paling likuid (subset JII70) |
+DES = Daftar SEMUA efek syariah (ratusan)
+ISSI = Indeks semua saham DES di IDX
+JII70 = 70 saham syariah paling likuid
+JII = 30 saham syariah paling likuid (subset JII70)
 
 Hierarki: DES ⊃ ISSI ⊃ JII70 ⊃ JII
-
-### Pitfall 5: Survivorship bias
-
-Jangan kasih impresi "saham syariah selalu naik". Tunjukkan risiko:
-- Saham bisa turun 50%+ walaupun syariah
-- Syariah = filter moral/kepatuhan, BUKAN jaminan profit
-- Past dividend ≠ future dividend
-
-### Pitfall 6: Data stale dari Yahoo Finance
-
-Yahoo Finance kadang delay 15-20 menit untuk IDX. Untuk intraday, sebutkan bahwa data mungkin bukan real-time. Untuk analisis end-of-day, data closing biasanya akurat.
-
-### Pitfall 7: User minta "pasti untung"
-
-Kalau user push untuk prediksi profit:
-```
-Saya tidak bisa memprediksi pergerakan harga saham. Yang bisa saya berikan:
-data historis, screening berdasarkan kriteria, dan identifikasi risiko.
-Keputusan investasi sepenuhnya di tangan Anda.
 ```
 
-JANGAN kasih target harga, jangan bilang "saham ini bagus buat dibeli".
+---
 
-## Verification
+## VERIFICATION
 
-Sebelum kirim output:
+```
+□ SETIAP saham dikonfirmasi masuk DES?
+□ Angka fundamental dari tool result (bukan memori)?
+□ Disclaimer ada?
+□ Gak ada statement yang bisa dibaca "rekomendasi beli"?
+□ Sumber dikutip dengan URL + tanggal?
+□ Risiko disebutkan (bukan cuma positif)?
 
-1. Apakah SETIAP saham yang dibahas sudah DIKONFIRMASI masuk DES? (cek, jangan asumsi)
-2. Apakah angka fundamental dari tool result (bukan dari memori)?
-3. Apakah disclaimer ada di output?
-4. Apakah ada statement yang bisa dibaca sebagai "rekomendasi beli"? (kalau ya, rephrase)
-5. Apakah sumber dikutip dengan URL + tanggal akses?
-6. Apakah risiko disebutkan (bukan cuma yang positif)?
-
-## Indeks referensi cepat
-
-| Indeks | Jumlah saham | Review | Cocok untuk |
-|--------|-------------|--------|-------------|
-| JII | 30 | 2x/tahun (Mei, Nov) | Blue chip syariah, paling likuid |
-| JII70 | 70 | 2x/tahun | Mid-large cap syariah |
-| ISSI | 400+ | mengikuti DES | Universe lengkap syariah |
-| IDX-MES BUMN 17 | 17 | berkala | BUMN syariah |
-
-## MCP alternatif (advanced)
-
-Kalau lo mau data yang lebih real-time dan structured, ada MCP server untuk saham Indonesia:
-
-- **baguskto-saham** (MCP server) — Node.js based, akses data saham IDX
-  - Source: https://lobehub.com/mcp/baguskto-saham
-  - Setup di `config.yaml` under `mcp:` section
-
-- **datasaham.io** (API) — 50+ endpoint, termasuk bandarmology
-  - https://datasaham.io/
-  - Butuh API key terpisah
-
-- **Sectors.app** — screener IDX dengan filter lengkap
-  - https://sectors.app/
-  - Ada free tier
-
-Ini opsional — skill ini bisa jalan cukup dengan `web_extract` ke Yahoo Finance / RTI.
-
-## Yang gw belum yakin
-
-- **Apakah Yahoo Finance .JK selalu up-to-date untuk semua saham IDX?** Beberapa saham kecil (third liner) kadang datanya sparse di Yahoo. Untuk saham JII/JII70, biasanya OK.
-- **Format halaman OJK DES**: OJK sering redesign website. Kalau `web_extract` ke halaman DES gagal, coba search "Keputusan Daftar Efek Syariah [tahun] OJK" → biasanya ada PDF yang bisa di-extract.
-- **Sectors.app free tier limits**: gw belum cek berapa query/hari free tier-nya. Kalau hit limit, fallback ke Yahoo Finance.
+IF ada □ TIDAK → fix
+```

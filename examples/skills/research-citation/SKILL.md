@@ -1,7 +1,7 @@
 ---
 name: research-citation
-description: Cari jawaban faktual dengan sumber yang bisa dicek. Wajib citation per klaim. Kalau sumber primer tidak ditemukan, jawab "tidak ditemukan" — jangan ngarang.
-version: 1.0.0
+description: Cari jawaban faktual dengan sumber yang bisa dicek. Wajib citation per klaim. Kalau gak ketemu → bilang "tidak ditemukan".
+version: 2.0.0
 metadata:
   hermes:
     tags: [research, fact-check, citation, anti-hallucination]
@@ -11,159 +11,145 @@ metadata:
 
 # Research with Citation
 
-Skill ini dipanggil ketika user butuh **jawaban faktual yang bisa diverifikasi**, bukan opini atau best-guess. Output harus selalu menyertakan sumber primer atau dokumentasi resmi yang URL-nya bisa diklik.
-
-## When to Use
-
-Pakai skill ini bila request user:
-
-- Menanyakan fakta yang bisa salah/benar (kapan, berapa, siapa, di mana)
-- Menyebut hukum, regulasi, kebijakan, version software, leadership perusahaan
-- Meminta data statistik, market size, salary, ranking
-- Meminta kutipan dari orang publik
-- Meminta info berita / current events
-
-JANGAN pakai skill ini untuk:
-- Permintaan opini ("menurutmu mana lebih bagus?")
-- Brainstorming kreatif
-- Coding task (pakai default)
-
-## Procedure
-
-### 1. Klarifikasi kebutuhan akurasi
-
-Kalau pertanyaan ambigu, tanya dulu:
-- "Lo butuh angka resmi terkini, atau perkiraan kasar OK?"
-- "Lo nyari sumber tertentu (BPS, Kominfo, paper akademis), atau bebas?"
-
-### 2. Search dengan multiple queries
-
-Lakukan **minimal 2 query berbeda** ke `web_search`:
-- Query 1: bahasa user, persis seperti yang ditanyakan
-- Query 2: bahasa Inggris atau lebih spesifik (kalau topiknya teknis)
-- Query 3 (opsional): tambah qualifier "official", "site:gov.id", "site:.edu"
-
-### 3. Filter prioritas sumber
-
-Ranking source berdasarkan trust:
-
-| Tier | Sumber | Contoh |
-|---|---|---|
-| **1 (paling kuat)** | Sumber primer / official | api-docs.deepseek.com, bps.go.id, who.int, github.com/owner/repo |
-| **2** | Dokumentasi resmi vendor | nodejs.org/en/docs, react.dev |
-| **3** | Berita kredibel / wikipedia (untuk pointer) | reuters.com, bbc.com, kompas.com, en.wikipedia.org |
-| **4 (lemah)** | Blog post, Medium, Stack Overflow answer | gunakan sebagai supporting only, bukan primary claim |
-
-Skip total:
-- Blog SEO (hasil "top 10 best...")
-- Forum tanpa moderasi
-- Halaman dengan banyak ad / clickbait
-
-### 4. Extract claim per claim dengan URL
-
-Setiap fakta yang lo sebut HARUS punya URL backing-nya:
+## KAPAN PAKAI
 
 ```
-DeepSeek V4 Flash punya context window 1M token [1].
-
-[1] https://openrouter.ai/deepseek/deepseek-v4-flash (diakses [DATE_HARI_INI])
+IF user tanya fakta (kapan, berapa, siapa, di mana) → PAKAI
+IF user tanya regulasi / versi software / leadership → PAKAI
+IF user minta data statistik / ranking / salary → PAKAI
+IF user minta kutipan orang publik → PAKAI
+IF user minta opini / brainstorm / coding → JANGAN PAKAI
 ```
 
-Kalau ada **konflik antar sumber** (sumber A bilang X, sumber B bilang Y):
-- Sebut keduanya
-- Identifikasi mana yang lebih primary
-- Jangan paksain ada satu jawaban
+---
 
-### 5. Tag confidence
+## PROCEDURE (ikuti exact)
 
-Untuk setiap klaim, kasih level:
-- ✅ **Confirmed** — dari sumber tier 1
-- ⚠️ **Likely** — dari tier 2-3, masih kuat tapi cek ulang kalau krusial
-- ❓ **Unverified** — gak ketemu sumber kuat, anggap perkiraan
+### Step 1: Search minimal 2 query berbeda
 
-### 6. Format output
+```
+DO: web_search("[query bahasa user]")
+DO: web_search("[query English / lebih spesifik]")
+OPTIONAL: web_search("[query] site:official-domain")
+```
+
+### Step 2: Rank sumber by trust
+
+```
+TIER 1 (paling kuat): Sumber primer / official (api-docs, bps.go.id, who.int, github.com/owner/repo)
+TIER 2: Dokumentasi resmi vendor (nodejs.org, react.dev)
+TIER 3: Berita kredibel (reuters.com, kompas.com, wikipedia)
+TIER 4 (lemah): Blog post, Medium, Stack Overflow
+
+SKIP: Blog SEO "top 10 best", forum tanpa moderasi, halaman clickbait
+```
+
+### Step 3: Extract per klaim + tag confidence
+
+```
+IF klaim dari TIER 1 → tag: ✅ Confirmed
+IF klaim dari TIER 2-3 → tag: ⚠️ Likely (cek ulang kalau krusial)
+IF klaim gak ada sumber kuat → tag: ❓ Unverified
+```
+
+### Step 4: Handle konflik antar sumber
+
+```
+IF sumber A bilang X, sumber B bilang Y:
+  → sebut keduanya
+  → identifikasi mana yang lebih primary
+  DO NOT: paksa jadi satu jawaban
+```
+
+### Step 5: Format output
+
+---
+
+## OUTPUT TEMPLATE
 
 ```markdown
 ## Jawaban singkat
-[1-2 kalimat, jawab langsung pertanyaan user]
+[1-2 kalimat, jawab langsung]
 
 ## Detail dengan sumber
 
-✅ [Klaim 1]. ([Sumber 1])
+✅ [Klaim 1]. ([URL sumber])
 
-✅ [Klaim 2]. ([Sumber 2])
+⚠️ [Klaim 2 — likely tapi cek ulang]. ([URL sumber])
 
-⚠️ [Klaim 3 — likely tapi cek ulang]. ([Sumber 3])
+❓ [Klaim 3 — gak ada sumber kuat]. (tidak ditemukan)
 
 ## Yang TIDAK ditemukan
-- [Aspek yang user tanya tapi gak ada sumber kuat]
+- [aspek yang user tanya tapi gak ada sumber]
 
 ## Catatan
-- Tanggal akses sumber: [date]
-- [Caveat lain kalau ada, misal: "Halaman ini di-update terakhir 2024, mungkin sudah berubah"]
+- Tanggal akses: [date]
+- [caveat lain]
 ```
 
-## Pitfalls
+---
 
-### Pitfall 1: Halu URL
+## CONTOH OUTPUT YANG BENAR
 
-LLM cenderung **bikin URL plausible** yang sebenernya gak ada. Mitigasi:
-- HANYA kutip URL yang muncul DI HASIL TOOL `web_search` di turn ini
-- Kalau gak ada, JANGAN bikin URL — bilang "sumber tidak ditemukan"
-- Test cepat: kalau URL terlihat "terlalu rapi" (misal `bps.go.id/data-sumedang-2025`), curigai
-
-### Pitfall 2: Date bias
-
-Hasil search bisa nyampurin info lama dan baru. Mitigasi:
-- Cek `published_date` / footer halaman
-- Untuk topik time-sensitive, sebutkan tanggal data eksplisit
-- Kalau gak ada date di sumber, bilang "publish date unknown"
-
-### Pitfall 3: Statistik dari sumber sekunder
-
-Banyak artikel kutip statistik tanpa link ke primary source. Jangan rantai kutipan:
-- ❌ "Per artikel kompas.com (yang ngutip BPS), populasi adalah X"
-- ✅ Open BPS asli → cek angkanya → kutip BPS langsung
-- Kalau primary source gak diakses (paywall, butuh login), bilang gitu
-
-### Pitfall 4: User tekan untuk jawaban pasti
-
-Kalau user push ("kasih aja angkanya, gak usah disclaimer"), JANGAN drop standar. Tetap kasih jawaban dengan flag uncertainty. Kalau user mau angka pasti, dia bisa ke sumber primer sendiri.
-
-## Verification
-
-Setelah jawaban siap, self-check:
-
-1. Apakah setiap angka spesifik punya URL backing? (Y/N)
-2. Apakah setiap kutipan dari orang nyata punya URL backing? (Y/N)
-3. Apakah ada klaim "X sudah berubah jadi Y di [tahun]" yang URL-nya gak nyatain perubahan tersebut? (kalau ya — fix)
-4. Apakah ada section "Yang TIDAK ditemukan" yang jujur? (kalau seluruh jawaban "smooth", curigai diri sendiri — biasanya ada gap)
-
-Kalau ada satu "N" di check 1-3, **tahan jawaban**, redo search atau drop klaim.
-
-## Output Examples
-
-### Contoh OK
-
-User: "Berapa context window DeepSeek V4 Flash?"
-
-```
+```markdown
 ## Jawaban singkat
-Berdasarkan beberapa sumber sekunder, DeepSeek V4 Flash punya context window 1M token. Konfirmasi dari sumber primer DeepSeek perlu dicek terpisah.
+DeepSeek V3 memiliki context window 128K token berdasarkan dokumentasi resmi.
 
-## Detail
-⚠️ DeepSeek V4 Flash dilaporkan punya 1M-token context window oleh listing pihak ketiga seperti OpenRouter dan beberapa blog tinjauan ([1], [2]). Saya belum temukan halaman model resmi DeepSeek yang jelas mengkonfirmasi angka 1M, jadi sebaiknya verifikasi langsung di halaman pricing/model official DeepSeek sebelum mengandalkan angka ini untuk konfigurasi production.
+## Detail dengan sumber
 
-[1] https://openrouter.ai/deepseek/deepseek-v4-flash (diakses [DATE])
-[2] https://codersera.com/blog/deepseek-v4-flash-deep-dive (diakses [DATE])
+✅ DeepSeek V3 context window: 128K token. (https://platform.deepseek.com/docs)
+
+⚠️ DeepSeek V4 Flash dilaporkan 1M token oleh listing OpenRouter, belum dikonfirmasi docs resmi. (https://openrouter.ai/deepseek/deepseek-v4-flash)
 
 ## Yang TIDAK ditemukan
-- Halaman dokumentasi DeepSeek resmi yang menyatakan 1M context spesifik untuk Flash
+- Benchmark resmi DeepSeek V4 Flash vs V3 untuk coding tasks
+
+## Catatan
+- Tanggal akses: 24 Mei 2026
+- Info model AI berubah cepat, verify ke docs resmi sebelum production decision
 ```
 
-### Contoh BURUK (jangan kayak gini)
+---
+
+## CONTOH OUTPUT YANG SALAH (jangan kayak gini)
 
 ```
-DeepSeek V4 Flash punya context window 1 juta token. Modelnya dirilis tahun 2026 dengan arsitektur Mixture-of-Experts dan menjadi salah satu model paling efisien.
+DeepSeek V4 Flash punya context window 1 juta token. Modelnya dirilis 2026
+dengan arsitektur MoE dan menjadi salah satu model paling efisien.
 ```
-(Tidak ada source. Klaim spesifik tahun. "Salah satu paling efisien" tanpa benchmark. Halu.)
+❌ Tidak ada source. Klaim spesifik tanpa URL. "Salah satu paling efisien" tanpa benchmark.
+
+---
+
+## DECISION TREE: URL Handling
+
+```
+IF URL muncul di hasil web_search turn ini → boleh kutip
+IF URL gak muncul di tool result → DO NOT fabricate URL
+IF URL terlihat "terlalu rapi" (misal bps.go.id/data-exact-2025) → curigai, verify
+
+DO NOT: invent URLs
+DO NOT: guess URL patterns
+```
+
+## DECISION TREE: Angka & Statistik
+
+```
+IF angka ada di tool result → kutip + URL
+IF angka gak ada di tool result → bilang "tidak ditemukan"
+IF angka dari sumber sekunder (blog ngutip BPS) → coba buka BPS langsung
+IF BPS gak bisa diakses → bilang "dari sumber sekunder [URL], belum verify primer"
+```
+
+---
+
+## VERIFICATION
+
+```
+□ Setiap angka spesifik punya URL backing?
+□ Setiap kutipan orang nyata punya URL backing?
+□ Ada section "Yang TIDAK ditemukan" yang jujur?
+□ Gak ada URL yang gw fabricate?
+
+IF ada □ TIDAK → redo search atau drop klaim
+```

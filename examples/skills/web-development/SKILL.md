@@ -1,7 +1,7 @@
 ---
 name: web-development
-description: Bikin / refactor / debug web app full-stack (frontend + minor backend glue). Stack-aware, framework-agnostic. Output kode siap-jalan, gak halu API yang gak ada, gak ngarang library version.
-version: 1.0.0
+description: Bikin / refactor / debug web app full-stack. Stack-aware, framework-agnostic. Output kode siap-jalan.
+version: 2.0.0
 metadata:
   hermes:
     tags: [web, frontend, fullstack, react, nextjs, vue, svelte, html, css]
@@ -10,224 +10,217 @@ metadata:
 
 # Web Development
 
-Skill untuk task web development end-to-end: feature implementation, refactor, debug, build/deploy. Skill ini **menolak ngarang** — kalau library version, API endpoint, atau syntax framework tidak yakin, harus verify (read source, web_search docs resmi) sebelum write code.
+## KAPAN PAKAI
 
-## When to Use
-
-User minta:
-- "Bikin halaman X dengan Next.js / Vue / Svelte / dst"
-- "Tambahin feature Y di app yang ada"
-- "Refactor component Z"
-- "Debug kenapa tampilan rusak / data gak load"
-- "Setup proyek dari scratch"
-
-JANGAN pakai untuk:
-- Backend API design murni (pake `backend-proper` skill)
-- UX / desain visual yang butuh judgment estetis (pake `ui-ux` skill)
-- Mobile native (iOS/Android — beda alur)
-
-## Procedure
-
-### 1. Stack discovery (MANDATORY sebelum nulis kode)
-
-Sebelum buat satu baris code:
-
-```bash
-# Cek stack
-ls package.json next.config.* astro.config.* svelte.config.* nuxt.config.* vite.config.*
-cat package.json | head -30
-
-# Atau untuk Python web (Django/FastAPI):
-ls pyproject.toml requirements.txt manage.py
+```
+IF user minta "bikin halaman" OR "component" OR "feature web" → PAKAI
+IF user minta "refactor component" → PAKAI
+IF user minta "debug tampilan" OR "data gak load" → PAKAI
+IF user minta "setup project baru" → PAKAI
+IF user minta backend API murni → JANGAN (pakai backend-proper)
+IF user minta UI design review → JANGAN (pakai ui-ux)
 ```
 
-Catat:
-- Framework + version exact (Next.js 14.2.5? 15.0?)
-- Package manager (npm / yarn / pnpm / bun) — cek lockfile
-- TypeScript atau JavaScript murni
-- CSS approach (Tailwind / CSS modules / styled-components / vanilla)
-- State management (Zustand / Redux / TanStack Query / Pinia / context API)
-- Routing (App Router Next 14? Pages? React Router? File-based?)
-- API layer (REST / GraphQL / tRPC / Server Actions)
-- Database access (Prisma / Drizzle / TypeORM / raw SQL)
-- Auth (NextAuth / Clerk / Supabase / custom JWT)
-- Deployment target (Vercel / Cloudflare / VPS / Docker)
+---
 
-> **Cek baca file existing**: `read_file` minimum 2-3 component existing untuk match style. Indentasi, naming convention, import order — ikutin yang udah ada.
+## PROCEDURE (ikuti exact)
 
-### 2. Verify framework version (anti-halu syntax)
+### Step 1: Stack discovery (WAJIB sebelum nulis code)
 
-LLM sering halu syntax yang valid di major version berbeda. Mitigasi:
+```bash
+ls package.json next.config.* vite.config.* nuxt.config.* svelte.config.*
+cat package.json | head -30
+```
 
-| Risk | Cara cek |
-|---|---|
-| Next.js App Router vs Pages Router | Cek folder `app/` vs `pages/`. Sintaks beda jauh. |
-| React 18 vs 19 | `cat package.json \| grep '"react"'` — Suspense, use(), action API beda. |
-| Tailwind v3 vs v4 | v4 punya `@theme`, native CSS. Class palette beda. |
-| TypeScript strict mode | Cek `tsconfig.json` — kalau strict, code generated harus bener-bener typed. |
+CATAT:
+- Framework + version exact
+- Package manager (npm/yarn/pnpm/bun) — cek lockfile
+- TypeScript atau JavaScript
+- CSS approach (Tailwind / CSS Modules / styled-components)
+- Routing (App Router / Pages / React Router / file-based)
+- State management
+- Auth approach
 
-Kalau ragu syntax versi tertentu — `web_search "next.js 14 app router server actions"` ke docs resmi (next.js.org/docs, react.dev). JANGAN tulis dari memori kalau ragu.
+KEMUDIAN:
+```
+read_file() MINIMAL 2-3 component existing → match style
+```
 
-### 3. Plan sebelum kode
+### Step 2: Verify framework version (anti-halu syntax)
 
-Untuk task non-trivial (>3 file affected), tulis plan singkat dulu:
+```
+IF Next.js:
+  CHECK: folder app/ atau pages/?
+  IF app/ → App Router (server components default, "use client" for hooks)
+  IF pages/ → Pages Router (different API)
+
+IF React:
+  CHECK: cat package.json | grep '"react"'
+  IF react 18 → useFormStatus TIDAK ada
+  IF react 19 → use(), useFormState ada
+
+IF Tailwind:
+  CHECK: version 3 atau 4?
+  IF v3 → tailwind.config.js, prefix classes
+  IF v4 → @theme directive, CSS-native
+
+IF ragu syntax → web_search("[framework] [version] docs [feature]")
+DO NOT: tulis syntax dari memori kalau ragu versi
+```
+
+### Step 3: Plan (untuk task >3 file)
 
 ```markdown
 ## Plan
-- File baru: `app/dashboard/layout.tsx`, `app/dashboard/page.tsx`
-- File modify: `lib/auth.ts` (add session helper), `app/layout.tsx` (add provider)
-- Test plan: render integration test, manual smoke test di browser
-- Rollback plan: revert file list
-
-## Risks
-- Auth helper migration bisa break existing /login page
-- Tailwind class baru perlu rebuild
+- File baru: [list]
+- File modify: [list]
+- Test plan: [how to verify]
+- Risk: [apa yang bisa break]
 ```
 
-Kasih ke user, tunggu approve. Jangan langsung edit.
+TUNJUKKAN ke user, TUNGGU approve.
 
-### 4. Implementation
+### Step 4: Implementation rules
 
-- **Pake existing pattern**: kalau project udah ada `Button.tsx`, jangan bikin custom button baru — extend yang ada.
-- **Hindari over-engineering**: kalau task butuh 10 baris, jangan bikin abstraction class 50 baris.
-- **Type-safety first** (kalau TypeScript): no `any`, prefer narrow types. Kalau benar-benar gak bisa, kasih `// eslint-disable` dengan komentar alasan.
-- **Accessibility minimum**: setiap interactive element punya label / aria. Image punya alt. Form inputs labeled.
-- **Loading & error states**: data fetching jangan asumsi happy path. Kasih skeleton / spinner + error message + retry.
+```
+RULE: Pake existing pattern (kalau ada Button.tsx, extend itu — jangan bikin baru)
+RULE: Hindari over-engineering (10 baris task ≠ 50 baris abstraction)
+RULE: Type-safety first (no `any`, narrow types)
+RULE: Accessibility minimum (label, aria, alt text)
+RULE: Loading + error states (jangan asumsi happy path)
+DO NOT: import library yang gak ada di package.json tanpa tanya user
+DO NOT: campur server/client component salah
+```
 
-### 5. Test sebelum claim "selesai"
+### Step 5: Test sebelum deliver
 
-Test order (dari murah ke mahal):
+```
+RUN (dalam urutan):
+1. tsc --noEmit (type check)
+2. npm run lint
+3. npm run build (catch SSR/build-time bug)
 
-1. **Type check** — `npm run typecheck` atau `tsc --noEmit`
-2. **Lint** — `npm run lint`
-3. **Unit / integration test** — `npm test`
-4. **Build** — `npm run build` (catch SSR/build-time bug)
-5. **Run manual** — minta user test di browser kalau visual
+IF ada yang gagal → FIX sebelum present hasil
+IF semua pass → deliver
+```
 
-Kalau ada step yang gagal, **fix dulu** sebelum present hasil.
+---
 
-### 6. Output format
+## OUTPUT TEMPLATE
 
 ```markdown
 ## Implementasi: [Feature]
 
-**Stack terdeteksi**: [Next.js 14.2 / TS / Tailwind v3 / Drizzle / Vercel]
+**Stack**: [Next.js 14 / TS / Tailwind v3 / dll]
 
-**File baru**: 
-- `app/dashboard/page.tsx` (server component, list users dengan suspense)
+**File baru**:
+- `path/file.tsx` — [deskripsi singkat]
 
-**File modified**: 
-- `lib/db.ts` (add `getUsers` query)
+**File modified**:
+- `path/file.ts` — [apa yang diubah]
 
-**Test**: 
+**Test**:
 - ✅ tsc passes
-- ✅ lint passes  
+- ✅ lint passes
 - ✅ build passes
-- ⏳ Manual: silakan cek `/dashboard` di dev server
+- ⏳ Manual: silakan cek [path] di dev server
 
 **Notes**:
-- [Caveat / asumsi yang gw bikin]
-- [Yang sebaiknya user verify lagi]
+- [caveat / asumsi]
+- [yang perlu user verify]
 ```
 
-## Pitfalls
+---
 
-### Pitfall 1: Halu version-specific API
+## CONTOH OUTPUT
 
-❌ "Pakai `useFormState` dari React" (itu ada di React 19, di React 18 namanya beda)
+```markdown
+## Implementasi: Dashboard Page
 
-Fix: selalu cek package.json. Kalau ragu, tanya user atau search docs.
+**Stack**: Next.js 14.2 / TypeScript / Tailwind v3 / Drizzle ORM
 
-### Pitfall 2: Server vs Client component salah
+**File baru**:
+- `app/dashboard/page.tsx` — server component, list users
+- `app/dashboard/loading.tsx` — skeleton loading state
+- `components/UserCard.tsx` — card component reusable
 
-Next.js App Router: default Server Component. Hooks (`useState`, `useEffect`) butuh `"use client"`. Kalau salah taro:
-- Server component pake hook → build error
-- Client component pake `await db.query()` → akses DB di browser, security disaster
+**File modified**:
+- `lib/db.ts` — tambah query `getActiveUsers()`
+- `app/layout.tsx` — tambah nav link ke /dashboard
 
-Cek tiap component: butuh interactivity? client. Cuma data fetch? server.
+**Test**:
+- ✅ tsc passes (no type errors)
+- ✅ lint passes
+- ✅ build passes (no SSR issues)
+- ⏳ Manual: cek `/dashboard` di dev server
 
-### Pitfall 3: Hydration mismatch
-
-Render server beda dari client (timestamp, random, locale). Hindari:
-- `Date.now()` / `Math.random()` di render path
-- Browser-only API (`window`, `localStorage`) tanpa guard
-- Conditional render berdasarkan `typeof window`
-
-Pake `useEffect` atau `'use client'` untuk dynamic content.
-
-### Pitfall 4: Salah CSS spec
-
-Tailwind v3 dan v4 beda fundamental (config approach, color palette). CSS modules vs styled-components vs vanilla CSS punya quirks beda.
-
-Cek file CSS / Tailwind config dulu sebelum nulis class.
-
-### Pitfall 5: Asumsi env tersedia
-
-`process.env.NEXT_PUBLIC_API_URL` di client = harus prefix `NEXT_PUBLIC_`. `process.env.DATABASE_URL` di client = leak / undefined.
-
-Verify env strategy framework dulu.
-
-### Pitfall 6: Library yang gak ke-install
-
-Jangan import library random tanpa cek package.json. Kalau perlu library baru:
-- Tanya user dulu
-- Justify kenapa perlu (apakah bisa solve native?)
-- Cek bundle size (bundlephobia)
-
-## Verification
-
-Sebelum kasih hasil ke user:
-
-1. Apakah semua import valid (cek package.json)?
-2. Apakah type check passing?
-3. Apakah ada `console.log` / `debugger` ketinggalan?
-4. Apakah ada hardcoded secret / URL?
-5. Apakah handling loading / error state sudah ada?
-6. Apakah accessibility minimum terpenuhi?
-7. Apakah lo modify file yang user gak minta diubah?
-
-Kalau ada "ya" di #4, #7, atau "tidak" di lainnya — fix dulu.
-
-## Untuk Setup Project Baru
-
-Saat user minta "bikin project Next.js / Vite / Astro baru":
-
-```bash
-# JANGAN langsung scaffold — tanya dulu:
-# 1. Package manager preference (npm/yarn/pnpm/bun)?
-# 2. TypeScript yes/no?
-# 3. Tailwind / styling preference?
-# 4. Testing framework (Vitest / Jest / Playwright)?
-# 5. Linter / formatter (ESLint+Prettier / Biome)?
+**Notes**:
+- UserCard pake pattern yang sama kayak existing ProductCard
+- Loading state pake Suspense boundary
+- Data fetch di server component (no client-side fetching)
 ```
 
-Default rekomendasi gw (kalau user no opinion):
+---
 
-| Pilihan | Alasan |
-|---|---|
-| pnpm | Faster, disk-efficient |
-| TypeScript | Catch bug compile-time |
-| Tailwind | Productivity, ekosistem besar |
-| Vitest | Fast, ESM-native |
-| Biome | All-in-one (lint+format), 10x lebih cepat dari ESLint+Prettier |
-
-> Caveat: ekosistem JS bergerak cepat. Per [biomejs.dev](https://biomejs.dev) Biome stable, tapi user yang udah biasa ESLint mungkin prefer stick. Tanya dulu.
-
-## Untuk Debug Visual / Layout
+## DECISION TREE: Server vs Client Component (Next.js App Router)
 
 ```
-1. Buka di browser → buka DevTools
-2. Inspect element yang masalah
-3. Cek computed styles vs expected
-4. Cek box model (margin, padding, border)
-5. Cek media query active
-6. Cek z-index / stacking context
+IF component pake hooks (useState, useEffect, useRef) → "use client"
+IF component cuma fetch data dari DB → server component (DEFAULT)
+IF component handle form submission → "use client"
+IF component render static content → server component
+IF component pake browser API (window, localStorage) → "use client"
+
+COMMON MISTAKE: useState di server component → BUILD ERROR
+COMMON MISTAKE: await db.query() di client component → SECURITY DISASTER
 ```
 
-Kalau butuh otomatis:
+## DECISION TREE: Setup Project Baru
 
 ```
-> screenshot halaman /dashboard, area sidebar
+IF user minta project baru:
+  TANYA DULU:
+  1. Package manager? (npm/yarn/pnpm/bun)
+  2. TypeScript? (yes/no)
+  3. Styling? (Tailwind / CSS Modules / etc)
+  4. Testing? (Vitest / Jest / Playwright)
+  5. Linter? (ESLint+Prettier / Biome)
+
+  IF user no preference → default:
+  - pnpm (faster, disk-efficient)
+  - TypeScript (catch bugs)
+  - Tailwind (productive)
+  - Vitest (fast, ESM-native)
+  - Biome (all-in-one, 10x faster)
 ```
 
-Hermes browser tool + vision_analyze bisa visual diff.
+## DECISION TREE: Hydration Mismatch
+
+```
+IF render server beda dari client:
+  CAUSES:
+  - Date.now() / Math.random() di render path
+  - Browser-only API tanpa guard
+  - Conditional render based on typeof window
+
+  FIX:
+  - Pake useEffect untuk dynamic content
+  - Pake 'use client' directive
+  - Pake suppressHydrationWarning (last resort)
+```
+
+---
+
+## VERIFICATION
+
+```
+□ Semua import valid (ada di package.json)?
+□ Type check passing?
+□ Gak ada console.log / debugger ketinggalan?
+□ Gak ada hardcoded secret / URL?
+□ Loading + error state ada?
+□ Accessibility minimum (label, alt)?
+□ Gw gak modify file yang user gak minta?
+
+IF ada □ TIDAK → fix sebelum deliver
+```

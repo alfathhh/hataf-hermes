@@ -1,7 +1,7 @@
 ---
 name: deep-analysis
-description: Analisis mendalam multi-perspektif seperti senior researcher. Decompose masalah, identifikasi asumsi tersembunyi, evaluasi trade-off, berikan rekomendasi berlapis. Setara dengan mode "extended thinking" — tapi pakai tool calls bukan internal reasoning.
-version: 1.0.0
+description: Analisis mendalam multi-perspektif. Decompose masalah, identifikasi asumsi tersembunyi, evaluasi trade-off, rekomendasi conditional.
+version: 2.0.0
 metadata:
   hermes:
     tags: [analysis, reasoning, planning, strategy, decision]
@@ -10,180 +10,214 @@ metadata:
 
 # Deep Analysis
 
-Skill ini dipanggil untuk task yang butuh **analisis mendalam** — bukan jawaban cepat, tapi breakdown multi-layer. Equivalent dengan kemampuan extended thinking / chain-of-thought yang kuat.
+## KAPAN PAKAI
 
-## When to Use
-
-- Pertanyaan yang jawaban cepetnya misleading ("haruskah kita migrasi ke microservices?")
-- Keputusan arsitektur besar
-- Evaluasi proposal / RFC
-- Root cause analysis (kenapa X gagal?)
-- Strategy / roadmap planning
-- Risk assessment
-- Code architecture review berskala besar (>1000 LOC)
-
-JANGAN pakai untuk:
-- Quick Q&A faktual (pakai `research-citation`)
-- Task eksekusi langsung ("deploy ini")
-- Bug fix yang jelas (langsung fix aja)
-
-## Procedure
-
-### 1. Decompose pertanyaan
-
-Sebelum menjawab, pecah pertanyaan jadi sub-questions:
-
-```markdown
-## Decomposition
-
-Pertanyaan utama: "Haruskah kita migrasi dari monolith ke microservices?"
-
-Sub-questions yang harus dijawab SEBELUM main question:
-1. Apa pain points aktual dari monolith saat ini? (bukan theoretical)
-2. Berapa engineer di team? (microservices butuh N+ engineers per service)
-3. Apa deployment frequency saat ini? Apa yang blocking it?
-4. Apakah ada domain yang jelas-jelas independent?
-5. Berapa budget infra setelah migrasi vs sekarang?
-6. Timeline? (microservices migration = 6-18 bulan minimum)
+```
+IF pertanyaan yang jawaban cepetnya misleading → PAKAI
+IF keputusan arsitektur besar → PAKAI
+IF evaluasi proposal / RFC → PAKAI
+IF root cause analysis → PAKAI
+IF strategy / roadmap planning → PAKAI
+IF quick Q&A faktual → JANGAN (pakai research-citation)
+IF task eksekusi langsung → JANGAN (langsung kerjain)
+IF bug fix yang jelas → JANGAN (langsung fix)
 ```
 
-### 2. Gather evidence (bukan opini)
+---
 
-Untuk setiap sub-question, cari evidence:
-- `read_file` codebase (lines of code, coupling, shared DB usage)
-- `web_search` untuk data points yang relevan (industry benchmarks)
-- `session_search` untuk past conversations tentang topik ini
-- Tanya user kalau ada data yang cuma dia tau
+## PROCEDURE (ikuti exact, jangan skip step)
 
-### 3. Identifikasi asumsi tersembunyi
+### Step 1: Decompose pertanyaan jadi sub-questions
 
-Setiap proposal punya asumsi yang jarang diucapkan:
-
-```markdown
-## Hidden assumptions
-
-1. "Kita punya cukup engineer untuk maintain N services" — ❓ belum validated
-2. "Deployment frequency akan naik setelah migrasi" — ⚠️ depends on CI/CD maturity
-3. "Services akan benar-benar independent" — ❓ shared DB = monolith-in-disguise
+```
+TULIS:
+- Pertanyaan utama: "[apa yang user tanya]"
+- Sub-question 1: [apa yang HARUS dijawab dulu]
+- Sub-question 2: [apa lagi]
+- Sub-question 3: [apa lagi]
 ```
 
-### 4. Multi-perspective evaluation
+### Step 2: Gather evidence (bukan opini)
 
-Evaluasi dari minimal 3 angle:
+```
+IF ada codebase → read_file() untuk data coupling, LOC, structure
+IF butuh data market → web_search()
+IF ada past conversation → session_search()
+IF ada data yang cuma user tau → TANYA user
+DO NOT: jawab sub-questions dari opini/memori kalau bisa verify
+```
 
-| Perspektif | Pertimbangan |
-|---|---|
-| **Engineering** | Complexity, maintenance, debugging difficulty |
-| **Business** | Time to market, cost, team scaling |
-| **Operations** | Monitoring, incident response, deployment |
-| **Risk** | What could go catastrophically wrong? |
+### Step 3: Identifikasi hidden assumptions
 
-### 5. Trade-off matrix (bukan single recommendation)
+```
+UNTUK setiap proposal/ide yang dianalisis:
+  LIST asumsi yang GAK diucapkan tapi harus benar supaya ide ini jalan
+  LABEL setiap asumsi:
+    IF validated → ✅
+    IF belum dicek → ❓
+    IF likely wrong → ❌
+```
 
-```markdown
-## Trade-off Matrix
+### Step 4: Multi-perspective evaluation
 
+```
+EVALUATE dari MINIMAL 3 sudut pandang:
+- Engineering: complexity, maintenance, debugging
+- Business: time to market, cost, scaling
+- Operations: monitoring, incident response, deploy
+- Risk: apa yang bisa catastrophically wrong?
+```
+
+### Step 5: Trade-off matrix
+
+```
+BUAT TABEL:
 | Opsi | Pros | Cons | Risk | Cost |
-|------|------|------|------|------|
-| A: Stay monolith + modularize | Low risk, cheap | Scaling ceiling | Low | $ |
-| B: Extract 2-3 services | Unblock deploys | Coordination overhead | Medium | $$ |
-| C: Full microservices | Max flexibility | High complexity, 12+ months | High | $$$$ |
 ```
 
-### 6. Conditional recommendation
+### Step 6: Conditional recommendation
 
-```markdown
-## Recommendation (conditional)
+```
+FORMAT:
+IF [kondisi A] → rekomendasi X
+IF [kondisi B] → rekomendasi Y
+IF [kondisi C] → rekomendasi Z
 
-**IF** team < 10 engineers AND deployment pain is mainly CI bottleneck:
-→ Opsi A (modularize monolith, fix CI pipeline)
-
-**IF** team 10-30 AND ada 2+ domains yang genuinely independent:
-→ Opsi B (extract those domains, keep rest monolith)
-
-**IF** team 30+ AND domain boundaries clear AND budget allows 12-18 month investment:
-→ Opsi C (but start with 2-3 services first, not big-bang)
-
-**Regardless**: fix observability first (logging, tracing, metrics). Tanpa itu, semua opsi akan painful.
+DO NOT: kasih single recommendation tanpa kondisi
+DO NOT: bilang "X lebih baik" tanpa context-dependent qualifier
 ```
 
-### 7. What could go wrong (pre-mortem)
+### Step 7: Pre-mortem
 
-```markdown
-## Pre-mortem: kalau rekomendasi ini salah
-
-Skenario 1: kita underestimate coupling → 6 bulan in, shared DB masih jadi bottleneck
-Skenario 2: team turnover → knowledge tersebar, incident response lambat
-Skenario 3: premature optimization → kita habis waktu re-architect tapi product stagnate
+```
+TULIS: "Kalau rekomendasi ini SALAH, apa yang terjadi?"
+- Skenario 1: [worst case]
+- Skenario 2: [likely failure mode]
 ```
 
-### 8. Next steps (actionable)
+### Step 8: Actionable next steps
 
-```markdown
-## Concrete next steps (urutan prioritas)
-
-1. [Week 1] Audit coupling: jalankan dependency analysis tool pada codebase
-2. [Week 1] Survey team: apa yang paling blocking mereka hari ini?
-3. [Week 2] Spike: coba extract 1 domain kecil, ukur effort real
-4. [Week 3] Decision meeting dengan data dari step 1-3
+```
+TULIS concrete steps dengan timeline:
+1. [Week 1] [action spesifik]
+2. [Week 2] [action spesifik]
+3. [Week 3] [decision point berdasarkan data dari 1-2]
 ```
 
-## Anti-patterns yang harus dihindari
+---
 
-1. **Single recommendation tanpa conditional** — realita selalu depends on context
-2. **Opini disajikan sebagai fakta** — "microservices lebih baik" bukan fakta, itu tergantung
-3. **Ignoring cost** — setiap pilihan punya cost (waktu, uang, complexity), sebutin
-4. **Analysis paralysis** — setelah decompose, tetap kasih recommendation. Jangan cuma list pro/con tanpa kesimpulan
-5. **Halu benchmark** — kalau lo sebut "Netflix berhasil dengan microservices karena X", pastikan itu dari sumber yang bisa dicek, bukan folklore
-6. **Overconfidence** — kalau analisis lo based on incomplete info, bilang. "Dengan data yang ada, rekomendasi saya adalah X. Tapi ada gap di Y yang bisa mengubah kesimpulan."
-
-## Format output lengkap
+## OUTPUT TEMPLATE
 
 ```markdown
 # Deep Analysis: [Judul]
 
-## TL;DR (max 3 kalimat)
-[Kesimpulan paling penting. Conditional.]
-
-## Context & constraints
-[Apa yang udah diketahui. Data yang dipakai.]
+## TL;DR (max 3 kalimat, conditional)
+[Kesimpulan. HARUS ada "IF...THEN" di dalamnya.]
 
 ## Decomposition
-[Sub-questions]
+- Pertanyaan utama: [X]
+- Sub-questions:
+  1. [sub-q 1]
+  2. [sub-q 2]
+  3. [sub-q 3]
 
-## Evidence gathered
-[Fakta + sumber]
+## Evidence
+| Sub-question | Evidence | Source | Confidence |
+|---|---|---|---|
+| [sq1] | [data] | [file/url/user] | ✅/⚠️/❓ |
 
-## Hidden assumptions
-[Yang biasanya gak disebut]
+## Hidden Assumptions
+1. "[asumsi 1]" — ❓ belum validated
+2. "[asumsi 2]" — ✅ confirmed dari [source]
+3. "[asumsi 3]" — ❌ likely wrong karena [reason]
 
-## Analysis per perspective
-[Engineering / Business / Ops / Risk]
+## Analysis per Perspective
+| Perspective | Assessment | Key concern |
+|---|---|---|
+| Engineering | [1 kalimat] | [biggest risk] |
+| Business | [1 kalimat] | [biggest risk] |
+| Operations | [1 kalimat] | [biggest risk] |
 
-## Trade-off matrix
-[Tabel opsi]
+## Trade-off Matrix
+| Opsi | Pros | Cons | Risk | Cost | Timeline |
+|---|---|---|---|---|---|
+| A | [list] | [list] | Low/Med/High | $/$$/$$$  | [weeks] |
+| B | [list] | [list] | Low/Med/High | $/$$/$$$  | [weeks] |
+| C | [list] | [list] | Low/Med/High | $/$$/$$$  | [weeks] |
 
 ## Recommendation (conditional)
-[IF...THEN...ELSE...]
+IF [kondisi] → Opsi [X] karena [alasan]
+IF [kondisi lain] → Opsi [Y] karena [alasan]
+REGARDLESS: [hal yang harus dilakuin apapun pilihannya]
 
 ## Pre-mortem
-[Kalau salah, apa yang terjadi]
+IF rekomendasi salah:
+- Skenario 1: [apa yang terjadi]
+- Skenario 2: [apa yang terjadi]
+- Mitigasi: [apa yang bisa dilakuin sekarang untuk reduce risk]
 
-## Next steps
-[Actionable items]
+## Next Steps
+1. [Week 1] [concrete action]
+2. [Week 1] [concrete action]
+3. [Week 2] [decision meeting dengan data dari step 1-2]
 
-## Confidence level
-[High / Medium / Low + alasan]
+## Confidence Level
+[High / Medium / Low] — karena [alasan]
 
-## What I don't know
-[Gaps yang kalau diisi bisa mengubah rekomendasi]
+## What I Don't Know
+- [gap 1 yang kalau diisi bisa mengubah rekomendasi]
+- [gap 2]
 ```
 
-## Verification
+---
 
-1. Apakah rekomendasi gw conditional (bukan absolutist)?
-2. Apakah ada perspektif yang gw miss?
-3. Apakah gw nge-claim fakta yang sebenarnya gw gak tau?
-4. Apakah next steps benar-benar actionable (bukan vague "think about it")?
-5. Apakah pre-mortem realistic?
-6. Apakah gw bias ke satu opsi tanpa acknowledge trade-off?
+## CONTOH OUTPUT (ringkas)
+
+```markdown
+# Deep Analysis: Migrasi Monolith ke Microservices
+
+## TL;DR
+IF team < 10 engineer DAN pain point utama = CI bottleneck → modularize monolith, jangan migrasi.
+IF team 15+ DAN ada 2+ domain genuinely independent → extract 2-3 service, keep sisanya monolith.
+
+## Decomposition
+- Pertanyaan utama: "Haruskah migrasi ke microservices?"
+- Sub-questions:
+  1. Apa pain point AKTUAL dari monolith saat ini?
+  2. Berapa engineer di team?
+  3. Apakah ada domain yang benar-benar independent?
+
+## Trade-off Matrix
+| Opsi | Pros | Cons | Risk | Cost |
+|---|---|---|---|---|
+| A: Modularize monolith | Low risk, 2 minggu | Scaling ceiling tetap | Low | $ |
+| B: Extract 2-3 service | Unblock deploys | Coordination overhead | Med | $$ |
+| C: Full microservices | Max flexibility | 12+ bulan, high complexity | High | $$$$ |
+
+## Recommendation (conditional)
+IF team < 10 → Opsi A
+IF team 10-30 + domain boundaries clear → Opsi B
+IF team 30+ + budget OK + timeline 12-18 bulan → Opsi C
+REGARDLESS: fix observability dulu (logging, tracing, metrics)
+
+## Next Steps
+1. [Week 1] Audit coupling: dependency analysis tool
+2. [Week 1] Survey team: apa yang paling blocking?
+3. [Week 2] Spike: extract 1 domain kecil, ukur effort real
+4. [Week 3] Decision meeting dengan data
+```
+
+---
+
+## VERIFICATION
+
+```
+□ Rekomendasi conditional (bukan absolutist)?
+□ Ada perspektif yang gw miss?
+□ Gw nge-claim fakta yang gw gak tau?
+□ Next steps actionable (bukan vague)?
+□ Pre-mortem realistic?
+□ Gw bias ke satu opsi tanpa acknowledge trade-off?
+
+IF ada □ TIDAK → fix sebelum kirim
+```

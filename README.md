@@ -183,6 +183,23 @@ IF need best reasoning → BALANCED (K2.6 near-Opus)
 IF mixed (coding + daily + research) → HYBRID
 ```
 
+### File Config
+
+| File | Strategy | Primary model |
+|------|----------|---------------|
+| [`examples/config-cheap.yaml`](examples/config-cheap.yaml) | CHEAP | DeepSeek V4 Flash |
+| [`examples/config-balanced.yaml`](examples/config-balanced.yaml) | BALANCED | Kimi K2.6 |
+| [`examples/config-hybrid.yaml`](examples/config-hybrid.yaml) | HYBRID | K2.6 (complex) + Flash (simple) |
+| [`examples/config.yaml`](examples/config.yaml) | BALANCED (default) | Kimi K2.6 |
+
+Cara pakai:
+```bash
+# Pilih salah satu, copy ke ~/.hermes/config.yaml
+cp examples/config-cheap.yaml ~/.hermes/config.yaml       # budget ketat
+cp examples/config-balanced.yaml ~/.hermes/config.yaml    # kualitas terbaik
+cp examples/config-hybrid.yaml ~/.hermes/config.yaml      # balance quality + cost
+```
+
 ---
 
 ## 🤖 Multi-Profile Telegram — Organized by Workflow
@@ -358,7 +375,10 @@ Setup detail lengkap: [docs/11-multi-profile-telegram.md](docs/11-multi-profile-
 |------|--------|
 | [`examples/SOUL.md`](examples/SOUL.md) | Identity + anti-halu + formatting rules + execution rules |
 | [`examples/AGENTS.md`](examples/AGENTS.md) | Project-level instructions + skill routing decision tree |
-| [`examples/config.yaml`](examples/config.yaml) | Full config — Balanced strategy |
+| [`examples/config.yaml`](examples/config.yaml) | Config default (BALANCED strategy) |
+| [`examples/config-cheap.yaml`](examples/config-cheap.yaml) | Config CHEAP — DeepSeek Flash primary, ~$10-15/bln |
+| [`examples/config-balanced.yaml`](examples/config-balanced.yaml) | Config BALANCED — Kimi K2.6 primary, ~$11-15/bln |
+| [`examples/config-hybrid.yaml`](examples/config-hybrid.yaml) | Config HYBRID — K2.6 complex + Flash simple, ~$12-20/bln |
 | [`examples/.env.example`](examples/.env.example) | Template env vars |
 
 ---
@@ -370,16 +390,20 @@ Setup detail lengkap: [docs/11-multi-profile-telegram.md](docs/11-multi-profile-
 curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
 source ~/.bashrc
 
-# 2. Copy config
+# 2. Copy config — pilih strategy lo
 cp examples/SOUL.md ~/.hermes/SOUL.md
-cp examples/config.yaml ~/.hermes/config.yaml
 cp examples/.env.example ~/.hermes/.env
-# Edit .env → isi API keys
+# Edit .env → isi OPENCODE_GO_API_KEY, OPENROUTER_API_KEY, TELEGRAM_BOT_TOKEN
+
+# Pilih salah satu config:
+cp examples/config-cheap.yaml ~/.hermes/config.yaml       # budget ketat (~$10-15/bln)
+cp examples/config-balanced.yaml ~/.hermes/config.yaml    # kualitas terbaik (~$11-15/bln)
+cp examples/config-hybrid.yaml ~/.hermes/config.yaml      # balance (~$12-20/bln)
 
 # 3. Install semua skills
 cp -r examples/skills/* ~/.hermes/skills/
 
-# 4. Install RTK (hemat token)
+# 4. Install RTK (hemat token terminal 60-90%)
 curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | bash
 pip install rtk-hermes
 

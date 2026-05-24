@@ -1,0 +1,189 @@
+# ==============================================================================
+# Hermes Agent — config-cheap.yaml
+# Strategy: CHEAP — semua dari OpenCode Go bundle, tanpa API terpisah
+#
+# Cocok untuk: budget ketat, personal use, daily Q&A + scraping + cron
+# Cost estimasi: ~$10-15/bulan (OpenCode Go $10 + OpenRouter $1-3 untuk vision)
+#
+# Trade-off:
+#   ✅ Paling murah, 1 provider saja
+#   ✅ DeepSeek V4 Flash: 1M context, cepat
+#   ⚠️ Skill instructions HARUS eksplisit (decision tree format)
+#   ⚠️ Bisa miss nuance di task coding kompleks
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# PRIMARY MODEL — DeepSeek V4 Flash (irit, 1M context)
+# ------------------------------------------------------------------------------
+# Flash: 31,650 credits/bulan di bundle OpenCode Go.
+# 1M context = handle PDF panjang, codebase besar, research tebal.
+# Cocok untuk: daily chat, scraping, cron, Q&A, research ringan.
+model:
+  provider: opencode-go
+  default: deepseek-v4-flash
+
+# ------------------------------------------------------------------------------
+# FALLBACK — DeepSeek V4 Pro (kalau Flash rate-limit/error)
+# ------------------------------------------------------------------------------
+fallback_model:
+  provider: opencode-go
+  model: deepseek-v4-pro
+
+# ------------------------------------------------------------------------------
+# SMART MODEL ROUTING — turn simple → Qwen3.5 Plus (paling irit)
+# ------------------------------------------------------------------------------
+# 60-70% turn lo cuma "halo", translate, format, classify → ke Qwen3.5 Plus.
+# Sisanya (coding, debug, analisis) → tetap ke Flash.
+smart_model_routing:
+  enabled: true
+  max_simple_chars: 200          # < 200 char → cheap
+  max_simple_words: 35           # < 35 kata → cheap
+  cheap_model:
+    provider: opencode-go
+    model: qwen3.5-plus          # 10,200 credits, paling irit untuk turn simple
+
+# ------------------------------------------------------------------------------
+# REASONING EFFORT — medium default, rendah untuk cron/scraping
+# ------------------------------------------------------------------------------
+# Flash punya thinking mode — bisa mahal kalau overused.
+# Set "medium" untuk daily use, "high" manual kalau butuh deep coding/analysis.
+agent:
+  reasoning_effort: medium       # opsi: xhigh/high/medium/low/minimal/none
+  max_turns: 90
+
+# ------------------------------------------------------------------------------
+# AUXILIARY MODELS — semua dari OpenCode Go (hemat)
+# ------------------------------------------------------------------------------
+# Vision HARUS OpenRouter — model OpenCode Go belum vision-capable.
+auxiliary:
+  vision:
+    provider: openrouter
+    model: google/gemini-2.5-flash    # ~$1-2/bulan untuk vision
+    timeout: 30
+  web_extract:
+    provider: opencode-go
+    model: qwen3.5-plus               # adequate untuk extract teks web
+  approval:
+    provider: opencode-go
+    model: qwen3.5-plus               # binary classify, gak perlu kuat
+
+# ------------------------------------------------------------------------------
+# COMPRESSION — aggressive (threshold rendah = compress lebih sering)
+# ------------------------------------------------------------------------------
+# Flash 1M context sebenarnya jarang overflow, tapi compress hemat token.
+compression:
+  enabled: true
+  threshold: 0.45                # compress lebih awal dari balanced
+  summary_provider: opencode-go
+  summary_model: qwen3.5-plus    # paling murah untuk summarize
+
+# ------------------------------------------------------------------------------
+# DELEGATION — subagent pakai Qwen3.5 Plus (narrow task, gak perlu kuat)
+# ------------------------------------------------------------------------------
+delegation:
+  provider: opencode-go
+  model: qwen3.5-plus
+
+# ------------------------------------------------------------------------------
+# MEMORY — tetap tight (default), jangan dilonggarkan
+# ------------------------------------------------------------------------------
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+  memory_char_limit: 2200        # ~800 token
+  user_char_limit: 1375          # ~500 token
+
+# ------------------------------------------------------------------------------
+# WEB SEARCH BACKEND
+# ------------------------------------------------------------------------------
+web:
+  backend: firecrawl
+
+# ------------------------------------------------------------------------------
+# TERMINAL BACKEND
+# ------------------------------------------------------------------------------
+terminal:
+  backend: local
+  cwd: "."
+  timeout: 180
+  persistent_shell: true
+
+# ------------------------------------------------------------------------------
+# APPROVALS
+# ------------------------------------------------------------------------------
+approvals:
+  mode: manual
+
+# ------------------------------------------------------------------------------
+# CHECKPOINTS
+# ------------------------------------------------------------------------------
+checkpoints:
+  enabled: true
+  max_snapshots: 50
+
+# ------------------------------------------------------------------------------
+# DISPLAY
+# ------------------------------------------------------------------------------
+display:
+  tool_progress: all
+  compact: false
+  show_cost: true
+  bell_on_complete: true
+  show_reasoning: false
+
+# ------------------------------------------------------------------------------
+# QUICK COMMANDS — zero token, pure shell
+# ------------------------------------------------------------------------------
+quick_commands:
+  status:
+    type: exec
+    command: systemctl status hermes-agent.service 2>/dev/null || echo "Service not found"
+  disk:
+    type: exec
+    command: df -h /
+  uptime:
+    type: exec
+    command: uptime
+  hermes_update:
+    type: exec
+    command: hermes update
+
+# ------------------------------------------------------------------------------
+# STREAMING
+# ------------------------------------------------------------------------------
+streaming:
+  enabled: true
+  transport: edit
+  edit_interval: 0.3
+  buffer_threshold: 40
+
+# ------------------------------------------------------------------------------
+# PRIVACY
+# ------------------------------------------------------------------------------
+privacy:
+  redact_pii: false
+
+# ------------------------------------------------------------------------------
+# GROUP CHAT
+# ------------------------------------------------------------------------------
+group_sessions_per_user: true
+
+# ==============================================================================
+# NOTES untuk CHEAP strategy:
+#
+# 1. Skills HARUS dalam format decision tree (IF/THEN, bukan prose).
+#    → Repo ini sudah dioptimasi untuk ini (lihat examples/skills/).
+#
+# 2. SOUL.md HARUS punya explicit rules (DO/DO NOT, bukan narasi).
+#    → Template ada di examples/SOUL.md
+#
+# 3. Untuk task coding kompleks: ketik /reasoning high untuk 1 turn itu.
+#    → Jangan set global high — mahal di Flash.
+#
+# 4. RTK (Rust Token Killer) sangat direkomendasikan untuk strategy ini.
+#    → Hemat 60-90% token dari terminal output.
+#    → Install: curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | bash
+#
+# 5. Smart routing threshold (200 char/35 kata) lebih longgar dari balanced.
+#    → Lebih banyak turn ke Qwen3.5 Plus → lebih hemat.
+# ==============================================================================

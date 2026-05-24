@@ -1,0 +1,217 @@
+# ==============================================================================
+# Hermes Agent — config-hybrid.yaml
+# Strategy: HYBRID — K2.6 untuk turn coding/complex, Flash untuk sisanya
+#
+# Cocok untuk: power user, heavy coding + daily use, ingin quality K2.6
+#              tapi tidak mau bayar lebih dari $20/bulan
+# Cost estimasi: ~$12-20/bulan
+#
+# Trade-off:
+#   ✅ Quality ceiling = K2.6 (near-Opus) untuk task yang penting
+#   ✅ Cost floor = Flash untuk task simpel (murah)
+#   ✅ Routing aggressive → K2.6 tersimpan untuk yang benar-benar butuh
+#   ⚠️ Perlu tuning threshold routing sesuai usage pattern lo
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# PRIMARY MODEL — Kimi K2.6 (hanya dipanggil untuk turn kompleks)
+# ------------------------------------------------------------------------------
+model:
+  provider: opencode-go
+  default: kimi-k2.6
+
+# ------------------------------------------------------------------------------
+# FALLBACK — DeepSeek V4 Flash (bukan Pro, lebih irit)
+# ------------------------------------------------------------------------------
+# Kalau K2.6 rate-limit, fallback ke Flash (bukan Pro) untuk hemat lebih.
+fallback_model:
+  provider: opencode-go
+  model: deepseek-v4-flash
+
+# ------------------------------------------------------------------------------
+# SMART MODEL ROUTING — AGGRESSIVE threshold
+# ------------------------------------------------------------------------------
+# Kunci hybrid: routing lebih agresif dari balanced.
+# K2.6 HANYA dipanggil kalau turn benar-benar kompleks.
+#
+# Threshold lebih tinggi = lebih banyak ke Flash:
+#   Balanced: 160 char / 28 kata
+#   Hybrid:   200 char / 35 kata  ← lebih longgar
+#
+# Pola turn yang ke Flash (cheap):
+#   - "halo", "terima kasih", simple Q&A
+#   - translate, format, reformat teks
+#   - classify/categorize
+#   - research/scraping tanpa coding
+#   - cron tasks (prompt sederhana)
+#
+# Pola turn yang tetap ke K2.6 (primary):
+#   - ada keyword: "coding", "debug", "refactor", "review", "arsitektur"
+#   - turn > 35 kata DAN complex pattern
+#   - multi-step task dengan tool calls
+smart_model_routing:
+  enabled: true
+  max_simple_chars: 200          # lebih longgar → lebih banyak ke Flash
+  max_simple_words: 35
+  cheap_model:
+    provider: opencode-go
+    model: deepseek-v4-flash     # 31,650 credits — banyak banget, cukup untuk semua simple turns
+
+# ------------------------------------------------------------------------------
+# REASONING EFFORT — medium default, JANGAN set high global
+# ------------------------------------------------------------------------------
+# High reasoning = K2.6 thinking tokens mahal. Gunakan selektif.
+# Untuk 1 turn khusus: ketik /reasoning high di chat.
+agent:
+  reasoning_effort: ""           # medium. Jangan ganti ke high global.
+  max_turns: 90
+
+# ------------------------------------------------------------------------------
+# AUXILIARY MODELS — semua cheap, sesuai fungsinya
+# ------------------------------------------------------------------------------
+auxiliary:
+  vision:
+    provider: openrouter
+    model: google/gemini-2.5-flash    # HARUS OpenRouter
+    timeout: 30
+  web_extract:
+    provider: opencode-go
+    model: qwen3.5-plus               # adequate untuk extract
+  approval:
+    provider: opencode-go
+    model: qwen3.5-plus               # paling murah, binary classify
+
+# ------------------------------------------------------------------------------
+# COMPRESSION — moderate-aggressive (45%)
+# ------------------------------------------------------------------------------
+# Hybrid sering session panjang (coding + Q&A mix).
+# Compress sedikit lebih awal untuk jaga quota K2.6.
+compression:
+  enabled: true
+  threshold: 0.45
+  summary_provider: opencode-go
+  summary_model: qwen3.5-plus    # paling murah untuk summarize
+
+# ------------------------------------------------------------------------------
+# DELEGATION — Flash (narrow subtask, gak butuh K2.6)
+# ------------------------------------------------------------------------------
+# Subagent untuk delegate task sempit → Flash cukup.
+delegation:
+  provider: opencode-go
+  model: deepseek-v4-flash
+
+# ------------------------------------------------------------------------------
+# MEMORY
+# ------------------------------------------------------------------------------
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+  memory_char_limit: 2200
+  user_char_limit: 1375
+
+# ------------------------------------------------------------------------------
+# WEB SEARCH BACKEND
+# ------------------------------------------------------------------------------
+web:
+  backend: firecrawl
+
+# ------------------------------------------------------------------------------
+# TERMINAL BACKEND
+# ------------------------------------------------------------------------------
+terminal:
+  backend: local
+  cwd: "."
+  timeout: 180
+  persistent_shell: true
+
+# ------------------------------------------------------------------------------
+# APPROVALS
+# ------------------------------------------------------------------------------
+approvals:
+  mode: manual
+
+# ------------------------------------------------------------------------------
+# CHECKPOINTS
+# ------------------------------------------------------------------------------
+checkpoints:
+  enabled: true
+  max_snapshots: 50
+
+# ------------------------------------------------------------------------------
+# DISPLAY
+# ------------------------------------------------------------------------------
+display:
+  tool_progress: all
+  compact: false
+  show_cost: true
+  bell_on_complete: true
+  show_reasoning: false
+
+# ------------------------------------------------------------------------------
+# QUICK COMMANDS
+# ------------------------------------------------------------------------------
+quick_commands:
+  status:
+    type: exec
+    command: systemctl status hermes-agent.service 2>/dev/null || echo "Service not found"
+  disk:
+    type: exec
+    command: df -h /
+  uptime:
+    type: exec
+    command: uptime
+  hermes_update:
+    type: exec
+    command: hermes update
+
+# ------------------------------------------------------------------------------
+# STREAMING
+# ------------------------------------------------------------------------------
+streaming:
+  enabled: true
+  transport: edit
+  edit_interval: 0.3
+  buffer_threshold: 40
+
+# ------------------------------------------------------------------------------
+# PRIVACY
+# ------------------------------------------------------------------------------
+privacy:
+  redact_pii: false
+
+# ------------------------------------------------------------------------------
+# GROUP CHAT
+# ------------------------------------------------------------------------------
+group_sessions_per_user: true
+
+# ==============================================================================
+# NOTES untuk HYBRID strategy:
+#
+# 1. MONITOR USAGE selama 1 minggu pertama:
+#    → /usage untuk lihat berapa turn ke K2.6 vs Flash
+#    → Target: K2.6 < 30% total turns
+#    → Kalau K2.6 > 50% → naikkan threshold (250 char / 40 kata)
+#
+# 2. Kalau K2.6 quota masih sering habis:
+#    Opsi A: Longgarkan threshold lebih:
+#      max_simple_chars: 250
+#      max_simple_words: 45
+#    Opsi B: Ganti primary ke Flash, pake K2.6 manual:
+#      default: deepseek-v4-flash
+#      ketik /model kimi-k2.6 untuk turn yang butuh quality tinggi
+#
+# 3. Cron jobs OTOMATIS ke Flash (cron prompt biasanya pendek).
+#    → Tidak perlu konfigurasi tambahan.
+#
+# 4. Research/scraping tasks → Flash.
+#    → Web search + extract tidak butuh reasoning K2.6.
+#    → K2.6 tersimpan untuk synthesis/analysis step.
+#
+# 5. Berbeda dari BALANCED:
+#    Balanced: threshold ketat (160/28) → K2.6 lebih sering dipanggil
+#    Hybrid:   threshold longgar (200/35) + fallback Flash (bukan Pro) → lebih hemat
+#
+# 6. Berbeda dari CHEAP:
+#    Cheap: primary Flash, gak ada K2.6 sama sekali
+#    Hybrid: primary K2.6 ADA tapi jarang dipanggil (reserved untuk complex)
+# ==============================================================================

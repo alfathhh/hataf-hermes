@@ -1,7 +1,7 @@
 ---
 name: pdf-summarize
-description: Baca PDF (paper/laporan/regulasi) dan kasih summary terstruktur dengan referensi halaman. Setiap klaim harus traceable ke section/halaman PDF.
-version: 1.0.0
+description: Baca PDF (paper/laporan/regulasi) dan kasih summary terstruktur dengan referensi halaman. Setiap klaim traceable ke section PDF.
+version: 2.0.0
 metadata:
   hermes:
     tags: [pdf, summary, document]
@@ -10,66 +10,68 @@ metadata:
 
 # PDF Summarize
 
-Skill untuk membaca dokumen PDF (paper akademik, laporan resmi, kontrak, regulasi) dan menghasilkan summary terstruktur. Setiap poin di summary harus bisa di-trace ke halaman atau section spesifik di PDF.
+## KAPAN PAKAI
 
-## When to Use
+```
+IF user kasih PDF file/URL + minta summary → PAKAI
+IF user minta "ringkas paper/report/kontrak" → PAKAI
+IF user kasih HTML article → JANGAN (pakai web_extract langsung)
+IF user kasih image-heavy PDF (scan KTP) → JANGAN (butuh OCR, beda alur)
+```
 
-User memberikan:
-- File PDF lokal (path file)
-- URL PDF
-- Permintaan "summarize this paper / report / contract"
+---
 
-JANGAN pakai skill ini untuk:
-- HTML / web article (pakai `web_extract`)
-- Image-heavy PDF (scan KTP, dll) — itu butuh OCR + vision, beda alur
+## PROCEDURE (ikuti exact)
 
-## Procedure
+### Step 1: Klarifikasi tujuan
 
-### 1. Klarifikasi tujuan summary
+```
+TANYA (kalau gak jelas):
+1. "Summary umum, atau fokus aspek tertentu?" (metodologi/hasil/risiko)
+2. "Format: bullet / narrative / executive summary?"
+3. "Panjang: 1 paragraf / 1 halaman / detailed?"
+```
 
-Tanya user (kalau gak jelas):
-- "Mau summary umum, atau fokus aspek tertentu? (metodologi / hasil / risiko / dst)"
-- "Format mau bullet, narrative, atau executive summary?"
-- "Berapa panjang? (1 paragraf / 1 halaman / detailed)"
-
-### 2. Extract isi PDF
-
-Pakai built-in tool. Cara:
+### Step 2: Load PDF
 
 ```python
-# Hermes punya tool untuk read file. PDF teks bisa langsung di-read.
-# Untuk PDF yang lokasinya remote (URL):
-#   1. Download dulu via terminal: curl -o /tmp/doc.pdf <URL>
-#   2. Baru read /tmp/doc.pdf
+# File lokal
+read_file("path/to/document.pdf")
+
+# URL
+terminal("curl -o /tmp/doc.pdf [URL]")
+read_file("/tmp/doc.pdf")
 ```
 
-Kalau PDF ternyata image-only (scan), tool read bakal kasih hasil kosong/garbage. Kasih tau user dan stop — minta versi text-extractable atau OCR dulu.
-
-### 3. Structure detection
-
-Identifikasi struktur dokumen:
-- **Paper akademis**: Abstract, Introduction, Methods, Results, Discussion, References
-- **Laporan teknis**: Executive Summary, Sections, Appendices
-- **Kontrak**: Pasal/Article 1, 2, 3, ..., Definitions, Termination clause
-- **Regulasi**: Bab, Pasal, Ayat
-- **Buku**: Chapter, Subchapter
-
-Catat halaman/section dari section yang penting.
-
-### 4. Summarize per section
-
-Untuk setiap section utama, generate 2-4 kalimat ringkas. Format:
-
-```markdown
-### [Nama Section] (hal. X – Y)
-[2-4 kalimat key takeaway. Setiap klaim harus akurat, jangan "kira-kira".]
+```
+IF hasil kosong / garbage → PDF image-only → bilang user: "PDF ini scan/image, butuh OCR dulu"
+IF file terlalu besar (>50 halaman) → gunakan strategy di bawah
 ```
 
-Kalau bagian penting punya angka/data, **kutip persis** dari PDF, jangan paraphrase angka.
+### Step 3: Detect structure
 
-### 5. Hasil overall
+```
+IF paper akademis → sections: Abstract, Intro, Methods, Results, Discussion, References
+IF laporan teknis → sections: Executive Summary, Sections, Appendices
+IF kontrak → sections: Pasal 1, 2, 3..., Definitions, Termination
+IF regulasi → sections: Bab, Pasal, Ayat
+IF buku → sections: Chapter, Subchapter
+```
 
-Output structure:
+### Step 4: Summarize per section (2-4 kalimat each)
+
+```
+RULE: Setiap klaim HARUS dari teks PDF (bukan dari pengetahuan umum)
+RULE: Angka/data KUTIP PERSIS (jangan paraphrase "sekitar separuh" kalau PDF bilang 47.3%)
+RULE: Catat halaman/section untuk setiap poin
+DO NOT: tambah informasi yang GAK ADA di PDF
+```
+
+### Step 5: Output
+
+---
+
+## OUTPUT TEMPLATE
 
 ```markdown
 # Summary: [Judul Dokumen]
@@ -77,8 +79,8 @@ Output structure:
 **Sumber**: [path/URL] | **Halaman**: [N total]
 **Tanggal akses**: [hari ini]
 
-## TL;DR
-[1 paragraf, max 4 kalimat]
+## TL;DR (max 4 kalimat)
+[Inti dokumen]
 
 ## Klaim utama
 1. [Klaim 1] (hal. X)
@@ -86,70 +88,104 @@ Output structure:
 3. [Klaim 3] (hal. Z)
 
 ## Per section
-[Loop section]
 
-## Hal yang harus dicek pembaca
-- [Kalau ada angka kritis, asumsi penting, atau klaim yang patut diverifikasi sendiri]
+### [Section Name] (hal. X–Y)
+[2-4 kalimat key takeaway]
+
+### [Section Name] (hal. X–Y)
+[2-4 kalimat]
 
 ## Yang TIDAK ada di dokumen
-[Penting kalau user nanya hal spesifik tapi gak dibahas — bilang gak ada]
+- [Gap 1: hal yang mungkin user expect tapi gak dibahas]
+- [Gap 2]
+
+## Catatan
+- [Limitasi: tabel hal X gak ke-extract bersih]
+- [Uncertainty: "sekitar hal. X" kalau gak yakin exact page]
 ```
 
-### 6. Section "Yang TIDAK ada"
+---
 
-Ini krusial untuk anti-halu. Setelah summary, evaluate:
-- Apakah dokumen ini punya gap? (misal: paper bahas hasil tapi gak bahas limitations)
-- Apakah ada klaim asumsi yang gak di-back?
-- Apakah ada referensi ke dokumen lain yang user butuh?
+## CONTOH OUTPUT
 
-List itu di section "Yang TIDAK ada di dokumen" atau "Yang sebaiknya pembaca cek".
+```markdown
+# Summary: "Laporan Keuangan PT XYZ Q1 2026"
 
-## Pitfalls
+**Sumber**: ~/Documents/lapkeu-xyz-q1-2026.pdf | **Halaman**: 32
+**Tanggal akses**: 24 Mei 2026
 
-### Pitfall 1: Salah halaman
+## TL;DR
+Revenue PT XYZ Q1 2026 naik 15% YoY ke Rp 4.7T. Net profit margin turun dari 12% ke 9% karena ekspansi warehouse. Cash position masih sehat (Rp 2.1T).
 
-LLM bisa salah inget halaman. Mitigasi:
-- Kalau ragu, sebut "sekitar hal. X" atau "di awal/tengah/akhir dokumen"
-- Lebih baik vague tapi accurate daripada spesifik tapi salah
+## Klaim utama
+1. Revenue Rp 4.7 Triliun (+15% YoY) (hal. 5)
+2. Net profit margin 9% (turun dari 12% Q1 2025) (hal. 8)
+3. CAPEX Rp 800M untuk 3 warehouse baru (hal. 14)
+4. Cash & equivalents Rp 2.1T (hal. 19)
 
-### Pitfall 2: Paraphrase angka
+## Per section
 
-JANGAN paraphrase angka. "Sekitar separuh" bukan pengganti "47.3%". Kalau PDF tulis 47.3%, summary tulis 47.3%.
+### Ikhtisar Keuangan (hal. 5-9)
+Revenue naik 15% didorong segment e-commerce logistics (+23%). Gross margin stabil 28%. Net margin turun ke 9% karena beban depresiasi warehouse baru.
 
-### Pitfall 3: Halu klaim yang gak ada di dokumen
+### Operasional (hal. 10-16)
+Volume pengiriman naik 20% ke 45 juta paket. Ekspansi ke 3 kota baru (Makassar, Balikpapan, Manado). Hiring 1,200 kurir baru.
 
-LLM cenderung "lengkapin" dengan informasi general yang masuk akal tapi gak di PDF. Self-check:
-- Apakah klaim ini ADA di teks PDF, atau gw tambahin sendiri dari pengetahuan umum?
-- Kalau yang kedua, drop atau flag eksplisit "berdasarkan konteks umum, bukan dari dokumen"
+### Posisi Keuangan (hal. 17-22)
+Total aset Rp 12.3T. DER 0.4x (sehat). Cash Rp 2.1T cukup untuk 18 bulan operasi tanpa revenue.
 
-### Pitfall 4: PDF tabel / chart kecil
+## Yang TIDAK ada di dokumen
+- Proyeksi Q2-Q4 2026 (gak disebutkan)
+- Detail per-kota revenue breakdown
+- Strategi pricing ke depan
 
-PDF yang banyak tabel angka, tool read teks bisa nge-flatten tabel jadi messy. Kalau angka di tabel kritis, beritahu user "tabel di hal. X gak ke-extract bersih, sebaiknya cek manual".
+## Catatan
+- Tabel hal. 20 (aging receivables) gak ke-extract bersih, cek manual
+- Angka dikutip persis dari dokumen
+```
 
-### Pitfall 5: PDF dengan track changes / komentar
+---
 
-Kalau ada strikethrough atau revision marks, sebutkan eksplisit. Jangan diam-diam kasih versi final tanpa flag bahwa ada draft state.
+## DECISION TREE: PDF Panjang (>50 halaman)
 
-## Verification
+```
+IF PDF > 50 halaman:
+  1. Read overview dulu: TOC, abstract, intro, conclusion
+  2. Identifikasi section yang user paling butuh
+  3. Read section spesifik itu detail
+  4. Summary progressive: overview → key sections → conclusion
+  IF context masih overload → chunk per section, summarize each
+```
 
-Self-check sebelum kirim:
+## DECISION TREE: Angka & Data
 
-1. Apakah setiap klaim di summary ada di teks PDF? (cek 2-3 sample)
-2. Apakah angka kunci sama persis dengan PDF? (cek 1-2 sample)
-3. Apakah ada section "Yang TIDAK ada" — atau jujur "saya gak nemu gap penting"?
-4. Apakah dokumen punya tanggal/version, dan udah disebutkan?
+```
+IF PDF tulis "47.3%" → summary tulis "47.3%" (EXACT)
+DO NOT: paraphrase "sekitar separuh"
+IF PDF punya tabel penting → kutip angka key dari tabel
+IF tabel gak ke-extract bersih → flag: "tabel hal. X perlu dicek manual"
+```
 
-## Untuk PDF panjang (> 50 halaman)
+## DECISION TREE: Klaim dari luar PDF
 
-PDF besar bisa overflow context. Strategy:
+```
+IF klaim ada di teks PDF → deliver
+IF klaim dari pengetahuan umum gw → DO NOT include, atau flag:
+  "⚠️ Ini BUKAN dari dokumen — ini konteks umum: [klaim]"
+IF user tanya hal yang gak ada di PDF:
+  → "Hal ini TIDAK dibahas di dokumen yang lo kasih."
+```
 
-1. Read overview (TOC, abstract, intro, conclusion) dulu — beberapa kilo token
-2. Identifikasi section yang user paling butuh
-3. Read **section spesifik** itu detail
-4. Summary disusun progressive: overview → key sections → conclusion
+---
 
-Kalau context masih kepenuhan, jalankan `/compress` antar tahap.
+## VERIFICATION
 
-## Untuk PDF non-Indonesia/non-Inggris
+```
+□ Setiap klaim di summary ada di teks PDF?
+□ Angka kunci sama persis dengan PDF?
+□ Ada section "Yang TIDAK ada"?
+□ Halaman/section reference akurat?
+□ Gak ada info yang gw tambahin dari luar PDF?
 
-Default: summary keluar dalam bahasa user (Indonesia kalau user Indo). Kalau dokumennya bahasa lain (Mandarin, Arab, Belanda), kerjakan di bahasa asli dulu (jangan auto-translate sembrono — istilah teknis bisa salah), summary akhir di bahasa user dengan caveat "diterjemahkan dari [bahasa asal]".
+IF ada □ TIDAK → fix
+```

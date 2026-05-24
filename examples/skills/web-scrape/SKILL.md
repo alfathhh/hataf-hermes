@@ -1,7 +1,7 @@
 ---
 name: web-scrape
-description: Scrape halaman web untuk extract data terstruktur (JSON). Schema-first, anti-bot fallback ke browser, dan kalau gagal — bilang "tidak ditemukan", jangan ngarang.
-version: 1.0.0
+description: Scrape halaman web untuk extract data terstruktur (JSON). Schema-first, anti-bot fallback ke browser, kalau gagal bilang gagal.
+version: 2.0.0
 metadata:
   hermes:
     tags: [web, scrape, extract, monitoring]
@@ -11,197 +11,198 @@ metadata:
 
 # Web Scrape
 
-Skill untuk extract data terstruktur dari halaman web, dengan output JSON yang konsisten. Bisa dipake sekali atau dijadwalkan via cron.
+## KAPAN PAKAI
 
-## When to Use
+```
+IF user minta "scrape" OR "extract data" OR "ambil info dari web" → PAKAI
+IF user minta "pantau perubahan halaman" → PAKAI
+IF user minta "ambil tabel dari URL" → PAKAI
+IF halaman butuh login → JANGAN PAKAI (bilang butuh login)
+IF mass scraping ribuan URL → JANGAN PAKAI (butuh worker terpisah)
+```
 
-User minta:
-- "Scrape harga produk di [URL]"
-- "Ambil daftar berita dari [URL]"
-- "Pantau perubahan halaman [URL]"
-- "Extract data tabel dari [URL]"
+---
 
-JANGAN pakai untuk:
-- Scrape situs yang explicitly larang (cek robots.txt) tanpa konfirmasi user
-- Scrape halaman login-required (gak ada login flow di skill ini)
-- Mass scraping ribuan URL — itu butuh worker terpisah, beda alur
+## PROCEDURE (ikuti exact, jangan skip)
 
-## Tools yang dipake
+### Step 1: Klarifikasi schema
 
-| Tool | Kapan |
-|---|---|
-| `web_search` | Cari URL kalau user kasih query, bukan URL spesifik |
-| `web_extract` | Default — fetch HTML + extract dengan schema |
-| `web_crawl` | Multi-page (pagination, nested links) |
-| `browser_navigate` | Fallback kalau halaman dynamic / JS-heavy / Cloudflare |
+TANYA user (kalau belum jelas):
+- "Field apa yang lo butuhkan?"
+- "Output format apa? (JSON / CSV / tabel)"
+- "Berapa item? (page 1 doang? sampe N halaman?)"
 
-Backend default: Firecrawl (set di config.yaml `web.backend`). Kalau Firecrawl gagal, kasih tau user untuk consider Tavily/Parallel atau self-host Firecrawl.
-
-## Procedure
-
-### 1. Klarifikasi schema sebelum scrape
-
-JANGAN langsung jalan. Tanya dulu:
-
-- "Field apa aja yang lo butuhkan dari halaman?"
-- "Output dalam format apa? (JSON / CSV / list bullet)"
-- "Berapa item maksimal? (page 1 doang? sampe N halaman?)"
-
-Bikin JSON schema **eksplisit**:
-
+Bikin JSON schema DULU:
 ```json
 {
   "title": "string",
-  "price": "number (IDR)",
-  "rating": "number (0-5)",
-  "url": "string (absolute URL)",
-  "image_url": "string"
+  "price": "number",
+  "url": "string (absolute URL)"
 }
 ```
 
-### 2. Robots.txt check
+### Step 2: Cek robots.txt
 
 ```bash
 curl -s https://example.com/robots.txt | head -50
 ```
 
-Kalau halaman target di-disallow buat scraping public, bilang user:
-- "Halaman ini disallow di robots.txt. Mau lanjut scrape karena alasan tertentu (misal personal use) atau cari sumber lain?"
+```
+IF target URL di-disallow → bilang ke user, tanya mau lanjut atau tidak
+IF robots.txt OK → lanjut
+```
 
-Jangan auto-skip robots tanpa user concious decision.
-
-### 3. Scrape
+### Step 3: Scrape (coba web_extract dulu)
 
 ```python
-# Pakai web_extract dengan schema
 result = web_extract(
-    url="https://example.com/products",
-    schema=MY_SCHEMA,
-    prompt="Extract all products on the page. URL field harus absolute."
+    url="[TARGET_URL]",
+    prompt="Extract [FIELD LIST]. Format JSON array. URL field harus absolute."
 )
 ```
 
-Kalau halaman static, ini cukup. Kalau gagal (empty result, atau struktur halaman ternyata di-render JS), fallback:
+### Step 4: Decision tree — kalau gagal
 
-```python
-# Browser fallback
-browser_navigate(url="https://example.com/products")
-browser_screenshot()  # liat halaman beneran rendering apa
-# extract dari rendered HTML
+```
+IF web_extract return data lengkap → lanjut Step 5
+IF web_extract return kosong / partial:
+  → coba browser_navigate(url="[TARGET_URL]")
+  → browser_screenshot()
+  → extract dari rendered HTML
+IF browser juga gagal:
+  → DO NOT fabricate data
+  → output: "❌ Scraping gagal" + diagnosa + rekomendasi
 ```
 
-### 4. Validasi hasil
+### Step 5: Validasi hasil
 
-Cek hasil sebelum present ke user:
+```
+CHECK: semua field terisi? (bukan banyak null)
+CHECK: tipe data konsisten? (price semua number, bukan campur string)
+CHECK: URL absolute? (bukan relative /products/123)
+CHECK: jumlah item masuk akal? (halaman ada 24 produk tapi result 3 = fishy)
 
-- Apakah field schema ke-fill semua, atau banyak `null`?
-- Apakah tipe data konsisten (semua price number, atau ada string "Rp 50.000"?)
-- Apakah URL field absolute (bukan relative `/products/123`)?
-- Apakah jumlah item plausible (kalau halaman jelas-jelas ada 24 produk tapi result cuma 3 — fishy)?
+IF ada anomali → flag di output ATAU redo extract
+```
 
-Kalau ada anomali, **flag di output** atau redo extract dengan prompt lebih spesifik.
+### Step 6: Format output
 
-### 5. Output
+---
+
+## OUTPUT TEMPLATE: Success
 
 ```markdown
-## Scraping result: [URL]
+## 🌐 Scraping result: [URL]
 
 **Tanggal akses**: [hari ini]
 **Items extracted**: [N]
-**Status**: ✅ Success / ⚠️ Partial / ❌ Failed
+**Status**: ✅ Success
 
 ```json
 [
-  { ... },
-  { ... }
+  {"title": "Product A", "price": 150000, "url": "https://..."},
+  {"title": "Product B", "price": 250000, "url": "https://..."}
 ]
 ```
 
-## Catatan
-- [Field yang gagal di-extract: ...]
-- [Halaman butuh JS rendering, pakai browser fallback]
-- [Pagination terdeteksi, ada N halaman lagi belum di-scrape]
+### Catatan
+- [field yang gagal: ...]
+- [pagination: ada N halaman lagi, mau lanjut?]
 ```
 
-### 6. Kalau gagal total
-
-Skenario: web_extract dan browser keduanya nge-zero result.
-
-JANGAN ngarang data. JANGAN substitute dengan "data perkiraan dari halaman serupa".
-
-Output:
+## OUTPUT TEMPLATE: Gagal
 
 ```markdown
 ## ❌ Scraping gagal: [URL]
 
 **Diagnosa**:
-- Web extract response: [paste error / empty]
-- Browser fallback: [hasilnya juga kosong / gagal load / Cloudflare blocking]
+- Web extract: [error / empty response]
+- Browser fallback: [juga gagal / Cloudflare blocking]
 
 **Kemungkinan penyebab**:
 1. Halaman butuh login
-2. Halaman di-block CDN (Cloudflare WAF, dll)
-3. Struktur HTML berubah, schema gak match
+2. Cloudflare WAF blocking
+3. HTML structure berubah
 
 **Rekomendasi**:
-- Kasih API resmi situs target (kalau ada)
-- Coba self-hosted Firecrawl (anti-bot lebih agresif tapi gak punya fire-engine cloud)
-- Manual screenshot + vision_analyze sebagai workaround
+- Cek manual di browser
+- Coba API resmi situs (kalau ada)
+- Self-hosted Firecrawl dengan Playwright
 ```
 
-## Pitfalls
+---
 
-### Pitfall 1: Halu data
+## CONTOH OUTPUT LENGKAP
 
-Mengulang dari rule SOUL.md: jangan ngarang data biar output keliatan informatif. `null` lebih baik daripada placeholder.
+```markdown
+## 🌐 Scraping result: https://tokopedia.com/search?q=keyboard
 
-### Pitfall 2: Salah parse harga
+**Tanggal akses**: 24 Mei 2026
+**Items extracted**: 5
+**Status**: ✅ Success
 
-Banyak situs Indonesia pake format "Rp 1.250.000" — itu titik sebagai pemisah ribuan, bukan desimal. Setelah extract:
-- Strip "Rp " 
-- Strip titik (kalau format Indo)
-- Convert ke int
+```json
+[
+  {
+    "name": "Keychron K2 V2",
+    "price": 1250000,
+    "rating": 4.9,
+    "sold": "500+ terjual",
+    "seller": "Keychron Official",
+    "url": "https://www.tokopedia.com/keychron/keychron-k2-v2"
+  },
+  {
+    "name": "Rexus Daxa M71",
+    "price": 450000,
+    "rating": 4.8,
+    "sold": "1rb+ terjual",
+    "seller": "Rexus Official",
+    "url": "https://www.tokopedia.com/rexus/daxa-m71"
+  }
+]
+```
 
-Kalau ragu, simpan sebagai string asli dan biar user yang interpret.
+### Catatan
+- Harga belum include ongkir
+- Data bisa berubah, cek langsung di marketplace untuk harga terkini
+- Pagination: ada 10+ halaman, yang di-extract cuma halaman 1
+```
 
-### Pitfall 3: Encoding
+---
 
-Beberapa halaman pake encoding lain (windows-1252, gb2312). Kalau hasil ada `??` atau `Â`, kemungkinan encoding mismatch. Re-extract dengan explicit encoding atau pake browser fallback.
+## DECISION TREE: Harga Indonesia
 
-### Pitfall 4: Pagination
+```
+IF format harga = "Rp 1.250.000":
+  1. Strip "Rp" dan spasi
+  2. Strip titik (pemisah ribuan, BUKAN desimal)
+  3. Convert ke integer: 1250000
+  DO NOT: interpret titik sebagai desimal
+```
 
-Banyak situs nge-load lebih banyak item via "Load More" button (JS) atau infinite scroll. `web_extract` cuma ambil halaman 1. Untuk multi-page:
-- Cek struktur URL pagination (`?page=2`, `?offset=20`, dst)
-- Loop manual dengan `web_extract`
-- Atau pake `web_crawl` dengan max_pages limit
+## DECISION TREE: Pagination
 
-JANGAN ambil semua halaman secara default — bisa ribuan request. Tanya user dulu.
+```
+IF user minta "semua halaman":
+  → tanya "berapa halaman max?"
+  → loop dengan delay 2 detik antar request
+  → STOP kalau dapat 429/403
 
-### Pitfall 5: Rate limit
+IF user gak sebut pagination:
+  → ambil halaman 1 saja
+  → bilang "ada N halaman lagi, mau lanjut?"
+```
 
-Kalau loop scraping, kasih jeda (`time.sleep(2)` antar request). Kalau dapat 429 / 403, stop dan kasih tau user.
+---
 
-### Pitfall 6: Hak cipta & TOS
+## VERIFICATION
 
-User yang tanggung jawab atas konten yang dia scrape. Tapi kalau jelas-jelas user mau scrape buat republikasi konten copyrighted (misal copy-paste artikel berita), beri caveat singkat.
+```
+□ JSON valid (parseable)?
+□ Struktur sesuai schema user?
+□ Gak ada item suspect (price=0, title="undefined")?
+□ URL absolute?
+□ Gak ada data yang gw fabricate?
 
-## Verification
-
-Sebelum kasih hasil ke user:
-
-1. Apakah JSON valid (parse-able)?
-2. Apakah struktur sesuai schema yang user mau?
-3. Apakah ada item yang clearly suspect (price = 0, title = "undefined")?
-4. Apakah URL absolute?
-5. Apakah lo ngarang field yang gak ada di halaman?
-
-Kalau ragu, run `web_extract` ulang dengan prompt yang lebih ketat.
-
-## Untuk monitoring (cronjob)
-
-Skill ini sering dipake dari cron. Detail di [docs/07-cron-scraping.md](../../../docs/07-cron-scraping.md).
-
-Kuncinya:
-- Output ke file JSON (path eksplisit)
-- Compare hasil baru vs hasil lama (diff)
-- Kirim notif Telegram cuma kalau ada perubahan signifikan
+IF ada □ TIDAK → redo atau flag
+```

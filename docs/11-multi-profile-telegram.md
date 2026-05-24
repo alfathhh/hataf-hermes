@@ -1,39 +1,55 @@
-# 11 — Multi-Profile Telegram (1 Server, Banyak Bot, Beda Personality)
+# 11 — Multi-Profile Telegram (1 Server, Banyak Bot, Per Workflow)
 
-Tujuan: setup Hermes dengan banyak profile — tiap profile punya bot Telegram sendiri, skill set sendiri, personality sendiri. Kayak punya "tim AI" yang masing-masing spesialis.
+Tujuan: setup Hermes dengan banyak profile — tiap profile = 1 workflow/domain. Bot Telegram terpisah, skill set fokus, personality konsisten. Kayak punya "tim AI" yang masing-masing spesialis.
 
 > Sumber: [Hermes Profiles docs](https://hermes-agent.nousresearch.com/docs/user-guide/profiles), [Profile Distributions](https://hermes-agent.nousresearch.com/docs/user-guide/profile-distributions), [Telegram Gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging/telegram).
 
 ---
 
-## 1. Konsep: kenapa multi-profile
+## 1. Konsep: kenapa organize per WORKFLOW
 
-| 1 bot untuk semua | Multi-profile (banyak bot) |
+| 1 bot untuk semua | Multi-profile per workflow |
 |---|---|
-| Semua topik di 1 chat | Tiap topik punya bot sendiri |
-| Skill campur-campur | Tiap bot cuma load skill yang relevan |
-| 1 personality untuk semua | Personality beda per bot (coding buddy ≠ ustadz AI) |
-| Hemat (1 gateway) | Lebih resource (N gateway), tapi UX jauh lebih clean |
+| Semua topik di 1 chat, context noisy | Tiap workflow punya context clean |
+| Semua 25 skill loaded | Tiap bot cuma load 3-7 skill relevan |
+| 1 personality untuk semua | Personality optimized per domain |
+| Token boros (skill list besar) | Token hemat (skill list kecil per profile) |
+| Cron output campur di 1 grup | Cron deliver ke grup yang tepat |
+
+### Workflow categories (rekomendasi):
+
+```
+1. META / GENERAL      → semua skill, general purpose, DM personal
+2. DEVELOPMENT         → coding, devops, review, data analysis
+3. RESEARCH & ANALYSIS → deep analysis, study buddy, pdf, video summary
+4. ISLAMIC STUDY       → islamic-study, research-citation (HIGH anti-halu)
+5. FINANCE & MONITOR   → saham, emas, financial literacy, marketplace scrape
+6. CONTENT & MEDIA     → copywriting, music download, social media scrape
+```
+
+Lo gak harus pakai SEMUA 6. Mulai dari 2-3, expand kalau perlu.
 
 ---
 
 ## 2. Arsitektur akhir
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  VPS lo (1 server)                                   │
-│                                                      │
-│  hermes --profile coding   → gateway → @hataf_code   │
-│  hermes --profile islamic  → gateway → @hataf_islam  │
-│  hermes --profile finance  → gateway → @hataf_money  │
-│  hermes --profile main     → gateway → @hataf_main   │
-└─────────────────────────────────────────────────────┘
-         │              │              │           │
-         ▼              ▼              ▼           ▼
-   ┌──────────┐  ┌───────────┐  ┌──────────┐ ┌────────┐
-   │ Grup     │  │ Grup      │  │ Grup     │ │ DM     │
-   │ Coding   │  │ Islamic   │  │ Finance  │ │ Personal│
-   └──────────┘  └───────────┘  └──────────┘ └────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│  VPS lo (1 server)                                                     │
+│                                                                        │
+│  hermes --profile main      → gateway → @hataf_main_bot     (DM)      │
+│  hermes --profile code      → gateway → @hataf_code_bot     (Coding)  │
+│  hermes --profile research  → gateway → @hataf_research_bot (Research)│
+│  hermes --profile islam     → gateway → @hataf_islam_bot    (Islam)   │
+│  hermes --profile finance   → gateway → @hataf_money_bot    (Finance) │
+│  hermes --profile media     → gateway → @hataf_media_bot    (Media)   │
+└───────────────────────────────────────────────────────────────────────┘
+         │            │              │            │           │          │
+         ▼            ▼              ▼            ▼           ▼          ▼
+   ┌──────────┐ ┌──────────┐ ┌───────────┐ ┌──────────┐ ┌────────┐ ┌────────┐
+   │ DM       │ │ Grup     │ │ Grup      │ │ Grup     │ │ Grup   │ │ Grup   │
+   │ Personal │ │ Coding   │ │ Research  │ │ Islamic  │ │ Finance│ │ Media  │
+   └──────────┘ └──────────┘ └───────────┘ └──────────┘ └────────┘ └────────┘
 ```
 
 ---
@@ -468,14 +484,48 @@ hermes --profile coding cron create "0 8 * * *" \
 
 ---
 
-## 5. Tabel ringkasan
+## 5. Tabel ringkasan — PER WORKFLOW
 
-| Profile | Bot | Grup | Model | Skill aktif | Personality |
-|---|---|---|---|---|---|
-| `coding` | @hataf_code_bot | 📚 Coding | Qwen3.6 Plus | coding-mentor, web-dev, backend, frontend, ui-ux, code-review | Temen belajar, analogi, exercise |
-| `islamic` | @hataf_islam_bot | 🕌 Islamic | DeepSeek V4 Flash (high reasoning) | islamic-study, research-citation | Asisten ilmu, anti-halu dalil, multi-mazhab |
-| `finance` | @hataf_money_bot | 💰 Finance | DeepSeek V4 Flash + smart routing | financial-literacy, saham-syariah, harga-emas, web-scrape | Edukator, kalkulator, disclaimer enforcer |
-| `default` | @hataf_main_bot | DM personal | DeepSeek V4 Flash + fallback OpenCode Go | SEMUA skill | General purpose, anti-halu, devil's advocate |
+| Profile | Workflow | Bot | Model (Cheap) | Model (Balanced) | Skills | Personality |
+|---|---|---|---|---|---|---|
+| `main` | **Meta / General** | @hataf_main_bot | Flash medium | K2.6 medium | Semua 25 | General purpose, anti-halu |
+| `code` | **Development** | @hataf_code_bot | Flash high | K2.6 high | coding-mentor, web-dev, backend, frontend, ui-ux, code-review, devops, data-analysis | Temen coding, eksekutor |
+| `research` | **Research & Analysis** | @hataf_research_bot | Flash high | Flash high (1M context) | deep-analysis, research-citation, study-buddy, pdf-summarize, video-summary | Researcher, citation-enforcer |
+| `islam` | **Islamic Study** | @hataf_islam_bot | Flash high | Flash high | islamic-study, research-citation | Asisten ilmu, anti-halu dalil, multi-mazhab |
+| `finance` | **Finance & Monitor** | @hataf_money_bot | Flash medium + routing | Flash medium + routing | financial-literacy, saham-syariah, harga-emas, web-scrape, marketplace-scrape | Edukator, kalkulator, disclaimer enforcer |
+| `media` | **Content & Media** | @hataf_media_bot | Qwen3.5 low | Qwen3.6 low | copywriting, music-download, social-media-scrape, video-summary | Content creator assistant |
+
+### Kenapa model allocation berbeda per workflow?
+
+```
+Development:  HIGH reasoning — coding butuh accuracy
+Research:     HIGH reasoning + LONG context — analisis + PDF panjang
+Islamic:      HIGH reasoning — HARAM ngarang dalil, harus careful
+Finance:      MEDIUM + routing — mix Q&A simple + screening yang perlu akurat
+Media:        LOW reasoning — content generation gak perlu deep thinking
+```
+
+### Cronjob distribution per workflow
+
+```
+Profile: finance
+├── Harga emas harian (logammulia.com) — 09:00 WIB weekdays
+├── Weekly screening saham syariah — Jumat 20:00
+└── DES update check — 1 Mei & 1 November
+
+Profile: main
+├── Weekly self-improvement review — Minggu 20:00
+└── System health check — setiap 6 jam
+
+Profile: code
+└── Daily coding tip (optional) — 08:00
+
+Profile: media
+└── (On-demand, no cron)
+
+Profile: research
+└── (On-demand, no cron)
+```
 
 ---
 

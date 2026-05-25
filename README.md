@@ -166,14 +166,15 @@ fallback_model:
 
 ### Tabel Perbandingan
 
-| | CHEAP | BALANCED | HYBRID |
-|---|---|---|---|
-| **Cost/bulan** | $10-15 | $11-15 | $12-20 |
-| **Quality ceiling** | Good | Near-Opus | Near-Opus |
-| **Quality floor** | Qwen3.5 Plus | Flash | Flash |
-| **Best for** | Daily chat, cron, scraping | Coding serius | Mixed heavy use |
-| **Routing threshold** | 200/35 | 160/28 (ketat) | 200/35 (longgar) |
-| **RTK benefit** | High | Medium | High |
+| | CHEAP | BALANCED | HYBRID | STRONG |
+|---|---|---|---|---|
+| **Cost/bulan** | $10-15 | $11-15 | $12-20 | $13-20 |
+| **Quality ceiling** | Good | Near-Opus | Near-Opus | Near-Opus |
+| **Reasoning effort** | medium | medium | medium | **high** |
+| **Quality floor** | Qwen3.5 Plus | Flash | Flash | Flash |
+| **Best for** | Daily chat, cron | Coding, review | Mixed heavy | Deep coding, arsitektur |
+| **lean-ctx MCP** | Optional | Optional | Optional | **Included** |
+| **RTK benefit** | High | Medium | High | Replaced by lean-ctx |
 
 ### Cara Pilih
 
@@ -182,6 +183,7 @@ IF cuma chat + cron + scraping       → CHEAP
 IF coding serius + code review       → BALANCED
 IF mixed heavy (coding + daily)      → HYBRID
 IF mau maksimalkan cache savings     → config-prefix-cache.yaml
+IF mau quality terbaik + deep reason → STRONG (config-strong.yaml)
 ```
 
 ### File Config
@@ -192,6 +194,7 @@ IF mau maksimalkan cache savings     → config-prefix-cache.yaml
 | [`examples/config-balanced.yaml`](examples/config-balanced.yaml) | BALANCED | Kimi K2.6 |
 | [`examples/config-hybrid.yaml`](examples/config-hybrid.yaml) | HYBRID | K2.6 + Flash aggressive routing |
 | [`examples/config-prefix-cache.yaml`](examples/config-prefix-cache.yaml) | BALANCED + KV cache opt | Kimi K2.6 |
+| [`examples/config-strong.yaml`](examples/config-strong.yaml) | STRONG | K2.6 high reasoning + lean-ctx |
 | [`examples/config.yaml`](examples/config.yaml) | BALANCED (default lengkap) | Kimi K2.6 |
 
 ```bash
@@ -222,7 +225,7 @@ Setup detail lengkap: [docs/11-multi-profile-telegram.md](docs/11-multi-profile-
 
 ## 📚 Daftar Isi
 
-### Docs Tutorial (14 docs)
+### Docs Tutorial (15 docs)
 
 | # | File | Isi |
 |---|------|-----|
@@ -240,6 +243,7 @@ Setup detail lengkap: [docs/11-multi-profile-telegram.md](docs/11-multi-profile-
 | 12 | [wsl-linux-commands](docs/12-wsl-linux-commands.md) | Cheat sheet WSL/Linux — navigasi, buka file, edit, troubleshoot |
 | 13 | [rtk-token-saver](docs/13-rtk-token-saver.md) | RTK install — hemat 60-90% token terminal |
 | 14 | [prefix-cache-optimization](docs/14-prefix-cache-optimization.md) | KV Prefix Cache (teknik DeepSeek Reasonix) — hemat 40-90% |
+| 15 | [lean-ctx-context-optimizer](docs/15-lean-ctx-context-optimizer.md) | lean-ctx: shell hook + MCP file compression — hemat 89-99% |
 
 ---
 
@@ -313,6 +317,7 @@ Setup detail lengkap: [docs/11-multi-profile-telegram.md](docs/11-multi-profile-
 | [`examples/config-balanced.yaml`](examples/config-balanced.yaml) | BALANCED — K2.6 primary |
 | [`examples/config-hybrid.yaml`](examples/config-hybrid.yaml) | HYBRID — K2.6 + Flash aggressive routing |
 | [`examples/config-prefix-cache.yaml`](examples/config-prefix-cache.yaml) | BALANCED + KV cache optimized |
+| [`examples/config-strong.yaml`](examples/config-strong.yaml) | STRONG — K2.6 high + lean-ctx MCP, ~$13-20/bln |
 | [`examples/.env.example`](examples/.env.example) | Template env vars |
 
 ---

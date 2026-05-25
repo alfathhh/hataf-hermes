@@ -1,0 +1,214 @@
+# ==============================================================================
+# Hermes Agent — config-strong.yaml
+# Strategy: STRONG — model terbaik + token optimization maksimal
+#
+# Cocok untuk: developer serius, coding kompleks, arsitektur review,
+#              deep analysis — mau quality terbaik tanpa buang token
+# Cost estimasi: ~$13-20/bulan (K2.6 primary + lean-ctx savings offset biaya)
+#
+# Trade-off:
+#   ✅ Quality ceiling = Kimi K2.6 (near-Opus, SWE-Bench 58.6%)
+#   ✅ Reasoning effort HIGH default — biarkan model mikir deep
+#   ✅ lean-ctx MCP + shell hook — compress file reads + terminal
+#   ✅ Prefix cache optimized — system prompt stable
+#   ⚠️ K2.6 quota terbatas (1,150 credits) — smart routing tetap ON
+#   ⚠️ Cost lebih tinggi dari CHEAP/HYBRID — offset oleh lean-ctx savings
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# PRIMARY MODEL — Kimi K2.6 (near-Opus, top quality)
+# ------------------------------------------------------------------------------
+model:
+  provider: opencode-go
+  default: kimi-k2.6
+
+# ------------------------------------------------------------------------------
+# FALLBACK — DeepSeek V4 Pro (strong fallback, bukan Flash)
+# ------------------------------------------------------------------------------
+# Untuk strategy strong, fallback juga harus kuat.
+fallback_model:
+  provider: opencode-go
+  model: deepseek-v4-pro
+
+# ------------------------------------------------------------------------------
+# SMART MODEL ROUTING — tetap ON tapi threshold ketat
+# ------------------------------------------------------------------------------
+# K2.6 quota terbatas. Routing hemat turn simpel ke Flash.
+# Threshold KETAT (160/28) → K2.6 lebih sering dipanggil (quality priority).
+smart_model_routing:
+  enabled: true
+  max_simple_chars: 160          # ketat → quality over cost
+  max_simple_words: 28
+  cheap_model:
+    provider: opencode-go
+    model: deepseek-v4-flash
+
+# ------------------------------------------------------------------------------
+# REASONING EFFORT — HIGH default
+# ------------------------------------------------------------------------------
+# Model kuat → biarkan reasoning deep. Ini yang bedain dari strategy lain.
+# Untuk turn yang gak butuh deep thinking, router otomatis kirim ke Flash anyway.
+agent:
+  reasoning_effort: high         # ← KEY: high default (bukan medium)
+  max_turns: 90
+
+# ------------------------------------------------------------------------------
+# AUXILIARY MODELS — vision kuat, extract adequate
+# ------------------------------------------------------------------------------
+auxiliary:
+  vision:
+    provider: openrouter
+    model: google/gemini-2.5-flash
+    timeout: 30
+  web_extract:
+    provider: opencode-go
+    model: qwen3.5-plus
+  approval:
+    provider: opencode-go
+    model: deepseek-v4-flash
+
+# ------------------------------------------------------------------------------
+# COMPRESSION — prefix-cache optimized (threshold tinggi)
+# ------------------------------------------------------------------------------
+# Compress lebih jarang → prefix stabil → cache hit rate tinggi
+compression:
+  enabled: true
+  threshold: 0.65                # tinggi: preserve prefix stability
+  summary_provider: opencode-go
+  summary_model: deepseek-v4-flash
+
+# ------------------------------------------------------------------------------
+# DELEGATION — model menengah (subagent gak perlu K2.6)
+# ------------------------------------------------------------------------------
+delegation:
+  provider: opencode-go
+  model: qwen3.6-plus
+
+# ------------------------------------------------------------------------------
+# MCP — lean-ctx Context Optimizer
+# ------------------------------------------------------------------------------
+# lean-ctx MCP Server kasih 46 tools untuk file read compression,
+# AST parsing, cross-session cache. Hemat 89-99% token pada file reads.
+# Install: cargo install lean-ctx
+# Shell hook: eval "$(lean-ctx hook bash)" di ~/.bashrc
+mcp:
+  lean-ctx:
+    command: lean-ctx
+    args: ["mcp-server"]
+
+# ------------------------------------------------------------------------------
+# MEMORY — standard (model kuat bisa manage context lebih baik)
+# ------------------------------------------------------------------------------
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+  memory_char_limit: 2200
+  user_char_limit: 1375
+
+# ------------------------------------------------------------------------------
+# WEB SEARCH BACKEND
+# ------------------------------------------------------------------------------
+web:
+  backend: firecrawl
+
+# ------------------------------------------------------------------------------
+# TERMINAL
+# ------------------------------------------------------------------------------
+terminal:
+  backend: local
+  cwd: "."
+  timeout: 180
+  persistent_shell: true
+
+# ------------------------------------------------------------------------------
+# APPROVALS
+# ------------------------------------------------------------------------------
+approvals:
+  mode: manual
+
+# ------------------------------------------------------------------------------
+# CHECKPOINTS
+# ------------------------------------------------------------------------------
+checkpoints:
+  enabled: true
+  max_snapshots: 50
+
+# ------------------------------------------------------------------------------
+# DISPLAY
+# ------------------------------------------------------------------------------
+display:
+  tool_progress: all
+  compact: false
+  show_cost: true
+  bell_on_complete: true
+  show_reasoning: false          # reasoning tetap hidden (hemat render)
+
+# ------------------------------------------------------------------------------
+# QUICK COMMANDS
+# ------------------------------------------------------------------------------
+quick_commands:
+  status:
+    type: exec
+    command: systemctl status hermes-agent.service 2>/dev/null || echo "Service not found"
+  disk:
+    type: exec
+    command: df -h /
+  uptime:
+    type: exec
+    command: uptime
+  hermes_update:
+    type: exec
+    command: hermes update
+
+# ------------------------------------------------------------------------------
+# STREAMING
+# ------------------------------------------------------------------------------
+streaming:
+  enabled: true
+  transport: edit
+  edit_interval: 0.3
+  buffer_threshold: 40
+
+# ------------------------------------------------------------------------------
+# PRIVACY
+# ------------------------------------------------------------------------------
+privacy:
+  redact_pii: false
+
+# ------------------------------------------------------------------------------
+# GROUP CHAT
+# ------------------------------------------------------------------------------
+group_sessions_per_user: true
+
+# ==============================================================================
+# NOTES untuk STRONG strategy:
+#
+# 1. Ini strategy untuk QUALITY-FIRST user:
+#    → reasoning: high default (model kuat boleh mikir lama)
+#    → routing: threshold ketat (K2.6 sering dipanggil)
+#    → fallback: V4 Pro (bukan Flash) — kalau K2.6 down, quality tetap oke
+#
+# 2. Token savings dari lean-ctx OFFSET biaya reasoning high:
+#    → File reads 90% lebih hemat → bisa afford reasoning token
+#    → Terminal output 80% lebih hemat
+#    → Net: quality naik, cost gak jauh beda dari BALANCED
+#
+# 3. Perbedaan dari BALANCED:
+#    BALANCED: reasoning medium, fallback Pro, threshold 160/28
+#    STRONG:   reasoning HIGH, fallback Pro, threshold 160/28, + lean-ctx MCP
+#    → STRONG = BALANCED + reasoning upgrade + lean-ctx offset
+#
+# 4. Perbedaan dari HYBRID:
+#    HYBRID: reasoning medium, threshold longgar 200/35, fallback Flash
+#    STRONG: reasoning HIGH, threshold ketat 160/28, fallback Pro
+#    → STRONG prioritas quality, HYBRID prioritas cost
+#
+# 5. Prerequisites:
+#    - lean-ctx installed (cargo install lean-ctx)
+#    - Shell hook aktif: eval "$(lean-ctx hook bash)" di ~/.bashrc
+#    - Ini OPTIONAL tapi sangat recommended untuk offset cost
+#
+# 6. Kalau K2.6 quota sering habis:
+#    → Longgarkan threshold ke 200/35 (jadi mirip hybrid tapi tetap high reasoning)
+#    → Atau: pake /reasoning medium untuk turn yang gak butuh deep thinking
+# ==============================================================================

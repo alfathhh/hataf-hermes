@@ -82,13 +82,14 @@ auxiliary:
     model: qwen3.5-plus               # paling murah, binary classify
 
 # ------------------------------------------------------------------------------
-# COMPRESSION — moderate-aggressive (45%)
+# COMPRESSION + PREFIX CACHE — moderate, cache friendly
 # ------------------------------------------------------------------------------
 # Hybrid sering session panjang (coding + Q&A mix).
-# Compress sedikit lebih awal untuk jaga quota K2.6.
+# PREFIX CACHE: DeepSeek otomatis cache system prompt. Cache hit = 10x murah.
+#   Syarat: SOUL.md static. Threshold dinaikkan untuk prefix stability.
 compression:
   enabled: true
-  threshold: 0.45
+  threshold: 0.55                # prefix cache friendly (naik dari 0.45)
   summary_provider: opencode-go
   summary_model: qwen3.5-plus    # paling murah untuk summarize
 

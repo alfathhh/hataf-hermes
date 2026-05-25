@@ -233,7 +233,7 @@ Hermes pake "auxiliary" model untuk task ringan yang **bukan** main reasoning:
 | `auxiliary.vision` | Gemini Flash via OpenRouter | Analisis gambar / screenshot |
 | `auxiliary.web_extract` | Gemini Flash via OpenRouter | Extract isi web page |
 | `auxiliary.approval` | Gemini Flash via OpenRouter | Klasifikasi command bahaya |
-| `compression.summary_model` | Gemini Flash | Compress conversation lama |
+| `auxiliary.compression` | Gemini Flash | Compress conversation lama (summarize) |
 
 Lo bisa swap ke OpenCode Go atau DeepSeek kalau mau:
 
@@ -245,10 +245,9 @@ auxiliary:
   web_extract:
     provider: opencode-go
     model: qwen3.5-plus
-
-compression:
-  summary_provider: opencode-go
-  summary_model: qwen3.5-plus
+  compression:
+    provider: opencode-go
+    model: qwen3.5-plus
 ```
 
 > **Catatan biaya**: auxiliary calls itu **frequent**. Pake yang murah-cepat (Gemini Flash, Qwen Plus). Jangan pake DeepSeek V4 Flash thinking di sini — itu tipenya bukan auxiliary task.

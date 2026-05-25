@@ -130,7 +130,7 @@ rm -ri folder/        # dia tanya "yakin?" per file
 | Command | Fungsi | Kapan pake |
 |---------|--------|-----------|
 | `ping google.com` | Cek internet nyambung | Kalau Hermes gak bisa connect |
-| `curl -I https://api.deepseek.com` | Test API endpoint | Verify endpoint bisa diakses |
+| `curl -I https://opencode.ai` | Test OpenCode Go endpoint | Verify provider bisa diakses |
 | `ip addr` | Liat IP address lo | Kalau setting network |
 | `ss -tlnp` | Liat port yang aktif | Cek service jalan di port berapa |
 
@@ -316,3 +316,270 @@ tar czf ~/hermes-backup-$(date +%F).tar.gz ~/.hermes/
 - Pengetahuan umum Linux command — bukan dari sumber spesifik
 - [WSL official docs](https://learn.microsoft.com/en-us/windows/wsl/) — install & troubleshoot WSL
 - [Hermes Agent docs](https://hermes-agent.nousresearch.com/docs/) — Hermes CLI commands
+
+
+---
+
+## 18. Buka file & folder (yang paling sering dibutuhkan)
+
+### Buka file di terminal
+
+```bash
+# Tampilkan isi file (read-only, cepat)
+cat ~/.hermes/config.yaml
+cat ~/.hermes/SOUL.md
+cat ~/.hermes/.env
+
+# Baca file panjang dengan scroll (tekan Space untuk next, q untuk quit)
+less ~/.hermes/config.yaml
+
+# Tampilkan N baris pertama / terakhir
+head -20 ~/.hermes/SOUL.md         # 20 baris pertama
+tail -30 ~/.hermes/config.yaml     # 30 baris terakhir
+tail -f /var/log/syslog            # log real-time (Ctrl+C stop)
+```
+
+### Edit file di terminal
+
+```bash
+# Nano — paling gampang untuk pemula
+nano ~/.hermes/config.yaml
+nano ~/.hermes/SOUL.md
+nano ~/.hermes/.env
+
+# Shortcut nano:
+# Ctrl+O → Save   |   Ctrl+X → Keluar   |   Ctrl+W → Search
+# Ctrl+K → Cut baris   |   Ctrl+U → Paste
+```
+
+### Edit file di VS Code (dari WSL)
+
+```bash
+# Install VS Code di Windows, lalu dari WSL:
+code ~/.hermes/config.yaml         # buka 1 file
+code ~/.hermes/                    # buka seluruh folder di VS Code
+code .                             # buka folder saat ini di VS Code
+```
+
+> VS Code akan otomatis install "WSL extension" dan konek ke WSL lo.
+
+### Buka folder di File Explorer Windows
+
+```bash
+explorer.exe .                     # buka folder SAAT INI di Explorer
+explorer.exe ~/.hermes             # buka folder .hermes di Explorer
+explorer.exe ~/                    # buka home directory di Explorer
+```
+
+> Dari Explorer Windows lo bisa drag-drop file, dan perubahan langsung kelihatan di WSL.
+
+---
+
+## 19. Cari file & teks di dalamnya
+
+```bash
+# Cari file berdasarkan nama
+find ~/.hermes -name "*.yaml"      # semua file .yaml di .hermes
+find ~/.hermes -name "SOUL.md"     # cari file SOUL.md
+find ~ -name "*.pdf" -type f       # semua PDF di home
+
+# Cari teks di dalam file
+grep -r "deepseek" ~/.hermes/      # cari kata "deepseek" di semua file .hermes
+grep -r "OPENCODE" ~/.hermes/.env  # cari di .env
+grep -n "model:" ~/.hermes/config.yaml  # tampilkan nomor baris
+
+# Cari + tampilkan context sekitarnya
+grep -n -A 2 -B 2 "primary" ~/.hermes/config.yaml  # 2 baris sebelum & sesudah
+```
+
+---
+
+## 20. Copy file dari Windows ke WSL (dan sebaliknya)
+
+```bash
+# Windows → WSL
+cp /mnt/c/Users/nama/Downloads/dokumen.pdf ~/
+cp /mnt/c/Users/nama/Desktop/config.yaml ~/.hermes/config.yaml
+
+# WSL → Windows
+cp ~/.hermes/config.yaml /mnt/c/Users/nama/Desktop/config-backup.yaml
+cp ~/hermes-backup.tar.gz /mnt/c/Users/nama/Downloads/
+
+# Copy folder
+cp -r ~/.hermes/ /mnt/c/Users/nama/Desktop/hermes-backup/
+```
+
+> **Path Windows di WSL**: `C:\Users\nama\` → `/mnt/c/Users/nama/`
+
+---
+
+## 21. Backup & restore config Hermes
+
+```bash
+# Backup semua config Hermes (recommended sebelum update/perubahan besar)
+tar czf ~/hermes-backup-$(date +%F).tar.gz ~/.hermes/
+# Hasilnya: hermes-backup-2026-05-24.tar.gz
+
+# Restore dari backup
+tar xzf ~/hermes-backup-2026-05-24.tar.gz -C ~/
+
+# Lihat isi backup tanpa extract
+tar tzf ~/hermes-backup-2026-05-24.tar.gz | head -20
+
+# Copy backup ke Windows (biar aman)
+cp ~/hermes-backup-$(date +%F).tar.gz /mnt/c/Users/nama/Desktop/
+```
+
+---
+
+## 22. Cek dan edit API keys di .env
+
+```bash
+# Lihat .env (hati-hati kalau ada orang lain di sekitar lo)
+cat ~/.hermes/.env
+
+# Edit dengan nano
+nano ~/.hermes/.env
+
+# Cek 1 key spesifik (tanpa tampilkan value)
+grep "OPENCODE" ~/.hermes/.env     # cek baris mana yang ada OPENCODE
+
+# Cek apakah key sudah di-set (tanpa tampilkan value)
+grep -c "^OPENCODE_GO_API_KEY=" ~/.hermes/.env  # output 1 = ada, 0 = tidak
+
+# Permission aman untuk .env (hanya owner yang bisa baca)
+chmod 600 ~/.hermes/.env
+```
+
+---
+
+## 23. Multi-profile: buka config per profile
+
+```bash
+# Lihat semua profile
+ls ~/.hermes/profiles/
+
+# Buka config profile coding
+cat ~/.hermes/profiles/coding/config.yaml
+nano ~/.hermes/profiles/coding/config.yaml
+
+# Buka SOUL.md profile islam
+cat ~/.hermes/profiles/islamic/SOUL.md
+nano ~/.hermes/profiles/islamic/SOUL.md
+
+# Buka di VS Code
+code ~/.hermes/profiles/
+
+# Lihat skills yang aktif di profile tertentu
+ls ~/.hermes/profiles/finance/skills/
+```
+
+---
+
+## 24. Lihat penggunaan disk .hermes
+
+```bash
+# Berapa total ukuran folder .hermes
+du -sh ~/.hermes/
+
+# Breakdown per sub-folder
+du -sh ~/.hermes/*/
+
+# File terbesar di .hermes
+du -sh ~/.hermes/**/* 2>/dev/null | sort -rh | head -10
+
+# Cek apakah disk hampir penuh
+df -h ~
+```
+
+---
+
+## 25. Search history command yang pernah diketik
+
+```bash
+# Lihat command history
+history
+
+# Search dengan Ctrl+R (interactive reverse search)
+# Ketik Ctrl+R, lalu ketik kata kunci → muncul command terakhir yang match
+# Tekan Ctrl+R lagi untuk hasil lebih lama
+# Enter untuk jalankan, Ctrl+C untuk cancel
+
+# Search di history file
+history | grep "hermes"
+history | grep "nano"
+history | grep "cp"
+
+# Jalankan command dari history (nomor)
+history           # lihat nomor
+!123              # jalankan command nomor 123
+!!                # jalankan command terakhir lagi
+```
+
+---
+
+## 26. Alias — shortcut command panjang
+
+Buat shortcut untuk command yang sering dipakai:
+
+```bash
+# Tambah alias ke ~/.bashrc (permanent)
+nano ~/.bashrc
+
+# Tambahin di bagian bawah:
+alias hermes-status='sudo systemctl status hermes-agent'
+alias hermes-restart='sudo systemctl restart hermes-agent'
+alias hermes-log='journalctl -u hermes-agent -f'
+alias hermes-config='nano ~/.hermes/config.yaml'
+alias hermes-soul='nano ~/.hermes/SOUL.md'
+alias hermes-env='nano ~/.hermes/.env'
+alias hls='ls ~/.hermes/skills/'
+
+# Aktifkan alias baru tanpa restart terminal
+source ~/.bashrc
+
+# Sekarang bisa pakai:
+hermes-status         # cek status
+hermes-restart        # restart
+hermes-log            # lihat log
+hermes-config         # edit config
+```
+
+---
+
+## 27. Cheat sheet: workflow setup Hermes baru
+
+```bash
+# 1. Clone repo / download config
+git clone https://github.com/alfathhh/hataf-hermes ~/hataf-hermes
+
+# 2. Copy SOUL.md
+cp ~/hataf-hermes/examples/SOUL.md ~/.hermes/SOUL.md
+
+# 3. Pilih strategy config
+cp ~/hataf-hermes/examples/config-balanced.yaml ~/.hermes/config.yaml
+# atau: config-cheap.yaml / config-hybrid.yaml
+
+# 4. Set API keys
+cp ~/hataf-hermes/examples/.env.example ~/.hermes/.env
+nano ~/.hermes/.env
+# → isi OPENCODE_GO_API_KEY, OPENROUTER_API_KEY, TELEGRAM_BOT_TOKEN
+
+# 5. Install semua skills
+cp -r ~/hataf-hermes/examples/skills/* ~/.hermes/skills/
+
+# 6. Cek semua ok
+hermes doctor
+
+# 7. Setup Telegram bot
+hermes gateway setup
+
+# 8. Jalankan sebagai service
+hermes gateway install --system
+sudo systemctl enable hermes-agent
+sudo systemctl start hermes-agent
+
+# 9. Verify jalan
+sudo systemctl status hermes-agent
+hermes -q "test, apakah kamu aktif?"
+```

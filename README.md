@@ -289,7 +289,7 @@ Setup detail lengkap: [docs/11-multi-profile-telegram.md](docs/11-multi-profile-
 
 ## 📚 Daftar Isi
 
-### Docs Tutorial (13 docs)
+### Docs Tutorial (14 docs)
 
 | # | File | Isi |
 |---|------|-----|
@@ -306,6 +306,7 @@ Setup detail lengkap: [docs/11-multi-profile-telegram.md](docs/11-multi-profile-
 | 11 | [multi-profile-telegram](docs/11-multi-profile-telegram.md) | Multi-bot Telegram per workflow |
 | 12 | [wsl-linux-commands](docs/12-wsl-linux-commands.md) | Cheat sheet Linux/WSL untuk pemula |
 | 13 | [rtk-token-saver](docs/13-rtk-token-saver.md) | RTK install — hemat 60-90% token terminal |
+| 14 | [prefix-cache-optimization](docs/14-prefix-cache-optimization.md) | KV Cache / Prefix Cache (teknik DeepSeek Reasonix) — hemat 40-90% |
 
 ---
 
@@ -379,6 +380,7 @@ Setup detail lengkap: [docs/11-multi-profile-telegram.md](docs/11-multi-profile-
 | [`examples/config-cheap.yaml`](examples/config-cheap.yaml) | Config CHEAP — DeepSeek Flash primary, ~$10-15/bln |
 | [`examples/config-balanced.yaml`](examples/config-balanced.yaml) | Config BALANCED — Kimi K2.6 primary, ~$11-15/bln |
 | [`examples/config-hybrid.yaml`](examples/config-hybrid.yaml) | Config HYBRID — K2.6 complex + Flash simple, ~$12-20/bln |
+| [`examples/config-prefix-cache.yaml`](examples/config-prefix-cache.yaml) | Config PREFIX CACHE — BALANCED + KV cache optimized, ~$8-12/bln |
 | [`examples/.env.example`](examples/.env.example) | Template env vars |
 
 ---

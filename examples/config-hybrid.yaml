@@ -19,11 +19,11 @@
 model:
   provider: opencode-go
   default: kimi-k2.6
+  api_mode: chat_completions
 
 # ------------------------------------------------------------------------------
 # FALLBACK — DeepSeek V4 Flash (bukan Pro, lebih irit)
 # ------------------------------------------------------------------------------
-# Kalau K2.6 rate-limit, fallback ke Flash (bukan Pro) untuk hemat lebih.
 fallback_model:
   provider: opencode-go
   model: deepseek-v4-flash
@@ -33,35 +33,17 @@ fallback_model:
 # ------------------------------------------------------------------------------
 # Kunci hybrid: routing lebih agresif dari balanced.
 # K2.6 HANYA dipanggil kalau turn benar-benar kompleks.
-#
-# Threshold lebih tinggi = lebih banyak ke Flash:
-#   Balanced: 160 char / 28 kata
-#   Hybrid:   200 char / 35 kata  ← lebih longgar
-#
-# Pola turn yang ke Flash (cheap):
-#   - "halo", "terima kasih", simple Q&A
-#   - translate, format, reformat teks
-#   - classify/categorize
-#   - research/scraping tanpa coding
-#   - cron tasks (prompt sederhana)
-#
-# Pola turn yang tetap ke K2.6 (primary):
-#   - ada keyword: "coding", "debug", "refactor", "review", "arsitektur"
-#   - turn > 35 kata DAN complex pattern
-#   - multi-step task dengan tool calls
 smart_model_routing:
   enabled: true
   max_simple_chars: 200          # lebih longgar → lebih banyak ke Flash
   max_simple_words: 35
   cheap_model:
     provider: opencode-go
-    model: deepseek-v4-flash     # 31,650 credits — banyak banget, cukup untuk semua simple turns
+    model: deepseek-v4-flash
 
 # ------------------------------------------------------------------------------
 # REASONING EFFORT — medium default, JANGAN set high global
 # ------------------------------------------------------------------------------
-# High reasoning = K2.6 thinking tokens mahal. Gunakan selektif.
-# Untuk 1 turn khusus: ketik /reasoning high di chat.
 agent:
   reasoning_effort: ""           # medium. Jangan ganti ke high global.
   max_turns: 90
@@ -72,30 +54,30 @@ agent:
 auxiliary:
   vision:
     provider: openrouter
-    model: google/gemini-2.5-flash    # HARUS OpenRouter
+    model: google/gemini-2.5-flash
     timeout: 30
   web_extract:
     provider: opencode-go
-    model: qwen3.5-plus               # adequate untuk extract
+    model: qwen3.5-plus
   approval:
     provider: opencode-go
-    model: qwen3.5-plus               # paling murah, binary classify
+    model: qwen3.5-plus
+  compression:
+    provider: opencode-go
+    model: qwen3.5-plus
 
 # ------------------------------------------------------------------------------
 # COMPRESSION — moderate-aggressive (45%)
 # ------------------------------------------------------------------------------
-# Hybrid sering session panjang (coding + Q&A mix).
-# Compress sedikit lebih awal untuk jaga quota K2.6.
 compression:
   enabled: true
   threshold: 0.45
-  summary_provider: opencode-go
-  summary_model: qwen3.5-plus    # paling murah untuk summarize
+  target_ratio: 0.2
+  protect_last_n: 20
 
 # ------------------------------------------------------------------------------
 # DELEGATION — Flash (narrow subtask, gak butuh K2.6)
 # ------------------------------------------------------------------------------
-# Subagent untuk delegate task sempit → Flash cukup.
 delegation:
   provider: opencode-go
   model: deepseek-v4-flash
@@ -169,9 +151,6 @@ quick_commands:
 # ------------------------------------------------------------------------------
 streaming:
   enabled: true
-  transport: edit
-  edit_interval: 0.3
-  buffer_threshold: 40
 
 # ------------------------------------------------------------------------------
 # PRIVACY
@@ -207,11 +186,16 @@ group_sessions_per_user: true
 #    → Web search + extract tidak butuh reasoning K2.6.
 #    → K2.6 tersimpan untuk synthesis/analysis step.
 #
-# 5. Berbeda dari BALANCED:
+# 5. lean-ctx — direkomendasikan:
+#    Compress shell output + file reads 89-99% sebelum sampai ke LLM.
+#    Install: cargo install lean-ctx
+#    Repo: https://github.com/yvgude/lean-ctx
+#
+# 6. Berbeda dari BALANCED:
 #    Balanced: threshold ketat (160/28) → K2.6 lebih sering dipanggil
 #    Hybrid:   threshold longgar (200/35) + fallback Flash (bukan Pro) → lebih hemat
 #
-# 6. Berbeda dari CHEAP:
+# 7. Berbeda dari CHEAP:
 #    Cheap: primary Flash, gak ada K2.6 sama sekali
 #    Hybrid: primary K2.6 ADA tapi jarang dipanggil (reserved untuk complex)
 # ==============================================================================

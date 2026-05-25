@@ -15,16 +15,14 @@
 # ------------------------------------------------------------------------------
 # PRIMARY MODEL — Kimi K2.6 (top tier di OpenCode Go bundle)
 # ------------------------------------------------------------------------------
-# K2.6: SWE-Bench Pro 58.6% — near-Opus level.
-# Quota: 1,150 credits. Smart routing WAJIB ON biar gak boros.
 model:
   provider: opencode-go
   default: kimi-k2.6
+  api_mode: chat_completions
 
 # ------------------------------------------------------------------------------
 # FALLBACK MODEL — DeepSeek V4 Pro (kalau K2.6 rate-limit/error)
 # ------------------------------------------------------------------------------
-# V4 Pro: 3,450 credits. Fallback otomatis kalau primary down.
 fallback_model:
   provider: opencode-go
   model: deepseek-v4-pro
@@ -32,8 +30,6 @@ fallback_model:
 # ------------------------------------------------------------------------------
 # SMART MODEL ROUTING — turn simpel → DeepSeek V4 Flash (irit)
 # ------------------------------------------------------------------------------
-# KUNCI strategy ini: 60-70% turn (halo, translate, Q&A pendek) → Flash.
-# Hanya turn kompleks (coding, debug, analysis) → K2.6.
 smart_model_routing:
   enabled: true
   max_simple_chars: 160          # < 160 char → Flash
@@ -45,8 +41,6 @@ smart_model_routing:
 # ------------------------------------------------------------------------------
 # REASONING EFFORT — medium default
 # ------------------------------------------------------------------------------
-# K2.6 reasoning kuat, biarkan dia kerja di medium.
-# Naik ke high/xhigh manual kalau butuh deep architecture review.
 agent:
   reasoning_effort: ""           # kosong = medium (default Hermes)
   max_turns: 90
@@ -57,24 +51,26 @@ agent:
 auxiliary:
   vision:
     provider: openrouter
-    model: google/gemini-2.5-flash    # HARUS OpenRouter — K2.6 tidak vision-capable
+    model: google/gemini-2.5-flash
     timeout: 30
   web_extract:
     provider: opencode-go
-    model: qwen3.5-plus               # adequate untuk teks, hemat
+    model: qwen3.5-plus
   approval:
     provider: opencode-go
-    model: deepseek-v4-flash          # binary classify → paling irit
+    model: deepseek-v4-flash
+  compression:
+    provider: opencode-go
+    model: deepseek-v4-flash
 
 # ------------------------------------------------------------------------------
 # COMPRESSION — moderate (50% threshold)
 # ------------------------------------------------------------------------------
-# K2.6 context lebih pendek, compress di 50% context penuh.
 compression:
   enabled: true
   threshold: 0.50
-  summary_provider: opencode-go
-  summary_model: deepseek-v4-flash    # irit, summarize gak butuh kuat
+  target_ratio: 0.2
+  protect_last_n: 20
 
 # ------------------------------------------------------------------------------
 # DELEGATION — Qwen3.6 Plus (balance quality/cost untuk subagent)
@@ -152,9 +148,6 @@ quick_commands:
 # ------------------------------------------------------------------------------
 streaming:
   enabled: true
-  transport: edit
-  edit_interval: 0.3
-  buffer_threshold: 40
 
 # ------------------------------------------------------------------------------
 # PRIVACY
@@ -185,5 +178,11 @@ group_sessions_per_user: true
 #    → Untuk task yang butuh 1M context (PDF panjang, codebase besar):
 #      ketik /model deepseek-v4-flash untuk 1 session itu
 #
-# 5. Ini adalah config DEFAULT yang paling direkomendasikan untuk developer.
+# 5. lean-ctx — direkomendasikan untuk hemat token tool output:
+#    Compress shell output + file reads 89-99% sebelum sampai ke LLM.
+#    Cached re-reads turun ke ~13 token. Zero dependencies, single binary.
+#    Install: cargo install lean-ctx
+#    Repo: https://github.com/yvgude/lean-ctx
+#
+# 6. Ini adalah config DEFAULT yang paling direkomendasikan untuk developer.
 # ==============================================================================

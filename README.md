@@ -193,15 +193,27 @@ IF mau quality terbaik + deep reason → STRONG (config-strong.yaml)
 | [`examples/config-cheap.yaml`](examples/config-cheap.yaml) | CHEAP | DeepSeek V4 Flash |
 | [`examples/config-balanced.yaml`](examples/config-balanced.yaml) | BALANCED | Kimi K2.6 |
 | [`examples/config-hybrid.yaml`](examples/config-hybrid.yaml) | HYBRID | K2.6 + Flash aggressive routing |
-| [`examples/config-prefix-cache.yaml`](examples/config-prefix-cache.yaml) | BALANCED + KV cache opt | Kimi K2.6 |
 | [`examples/config-strong.yaml`](examples/config-strong.yaml) | STRONG | K2.6 high reasoning + lean-ctx |
 | [`examples/config.yaml`](examples/config.yaml) | BALANCED (default lengkap) | Kimi K2.6 |
 
+> **Prefix cache** sudah built-in di SEMUA config (compression threshold dinaikkan).
+> Tidak perlu file terpisah. Syarat: SOUL.md harus static.
+
+### File AGENTS.md (pilih sesuai strategy)
+
+| File | Model target | Gaya instruksi |
+|------|-------------|----------------|
+| [`examples/AGENTS-cheap.md`](examples/AGENTS-cheap.md) | Flash / Qwen3.5 | Decision tree 100%, explicit DO/DO NOT, contoh output |
+| [`examples/AGENTS-balanced.md`](examples/AGENTS-balanced.md) | K2.6 medium | Tabel routing, prose pragmatis |
+| [`examples/AGENTS-hybrid.md`](examples/AGENTS-hybrid.md) | K2.6 + Flash mixed | Hybrid rules (both models bisa follow) |
+| [`examples/AGENTS-strong.md`](examples/AGENTS-strong.md) | K2.6 high / V4 Pro | Concise constraints, trust model judgment |
+
 ```bash
-# Pilih salah satu:
-cp examples/config-cheap.yaml ~/.hermes/config.yaml
-cp examples/config-balanced.yaml ~/.hermes/config.yaml
-cp examples/config-hybrid.yaml ~/.hermes/config.yaml
+# Copy sesuai strategy:
+cp examples/AGENTS-cheap.md ~/my-project/AGENTS.md       # kalau pake config-cheap
+cp examples/AGENTS-balanced.md ~/my-project/AGENTS.md    # kalau pake config-balanced
+cp examples/AGENTS-hybrid.md ~/my-project/AGENTS.md      # kalau pake config-hybrid
+cp examples/AGENTS-strong.md ~/my-project/AGENTS.md      # kalau pake config-strong
 ```
 
 ---
@@ -311,13 +323,20 @@ Setup detail lengkap: [docs/11-multi-profile-telegram.md](docs/11-multi-profile-
 | File | Fungsi |
 |------|--------|
 | [`examples/SOUL.md`](examples/SOUL.md) | Identity + anti-halu + rules |
-| [`examples/AGENTS.md`](examples/AGENTS.md) | Project conventions + skill routing |
+| [`examples/AGENTS.md`](examples/AGENTS.md) | Project conventions (legacy/generic) |
+| [`examples/AGENTS-cheap.md`](examples/AGENTS-cheap.md) | AGENTS for weak models (decision tree) |
+| [`examples/AGENTS-balanced.md`](examples/AGENTS-balanced.md) | AGENTS for K2.6 medium |
+| [`examples/AGENTS-hybrid.md`](examples/AGENTS-hybrid.md) | AGENTS for K2.6 + Flash mixed |
+| [`examples/AGENTS-strong.md`](examples/AGENTS-strong.md) | AGENTS for K2.6 high / V4 Pro |
 | [`examples/config.yaml`](examples/config.yaml) | BALANCED lengkap (default) |
 | [`examples/config-cheap.yaml`](examples/config-cheap.yaml) | CHEAP — Flash primary |
 | [`examples/config-balanced.yaml`](examples/config-balanced.yaml) | BALANCED — K2.6 primary |
 | [`examples/config-hybrid.yaml`](examples/config-hybrid.yaml) | HYBRID — K2.6 + Flash aggressive routing |
-| [`examples/config-prefix-cache.yaml`](examples/config-prefix-cache.yaml) | BALANCED + KV cache optimized |
-| [`examples/config-strong.yaml`](examples/config-strong.yaml) | STRONG — K2.6 high + lean-ctx MCP, ~$13-20/bln |
+| [`examples/config-strong.yaml`](examples/config-strong.yaml) | STRONG — K2.6 high + lean-ctx MCP |
+| [`examples/AGENTS-cheap.md`](examples/AGENTS-cheap.md) | AGENTS for weak models |
+| [`examples/AGENTS-balanced.md`](examples/AGENTS-balanced.md) | AGENTS for K2.6 medium |
+| [`examples/AGENTS-hybrid.md`](examples/AGENTS-hybrid.md) | AGENTS for K2.6 + Flash mixed |
+| [`examples/AGENTS-strong.md`](examples/AGENTS-strong.md) | AGENTS for K2.6 high / V4 Pro |
 | [`examples/.env.example`](examples/.env.example) | Template env vars |
 
 ---

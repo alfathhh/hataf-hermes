@@ -68,12 +68,14 @@ auxiliary:
     model: deepseek-v4-flash
 
 # ------------------------------------------------------------------------------
-# COMPRESSION — prefix-cache optimized (threshold tinggi)
+# COMPRESSION + PREFIX CACHE — prefix-cache optimized (threshold tinggi)
 # ------------------------------------------------------------------------------
-# Compress lebih jarang → prefix stabil → cache hit rate tinggi
+# Compress lebih jarang → prefix stabil → DeepSeek KV cache hit rate tinggi.
+# PREFIX CACHE: auto-cache system prompt. Cache hit = 10x lebih murah.
+#   SOUL.md harus STATIC. Threshold 0.65 = paling optimal untuk cache hit.
 compression:
   enabled: true
-  threshold: 0.65                # tinggi: preserve prefix stability
+  threshold: 0.65                # paling tinggi: max prefix cache stability
   summary_provider: opencode-go
   summary_model: deepseek-v4-flash
 

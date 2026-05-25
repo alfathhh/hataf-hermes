@@ -67,12 +67,15 @@ auxiliary:
     model: deepseek-v4-flash          # binary classify → paling irit
 
 # ------------------------------------------------------------------------------
-# COMPRESSION — moderate (50% threshold)
+# COMPRESSION + PREFIX CACHE — moderate threshold, cache friendly
 # ------------------------------------------------------------------------------
-# K2.6 context lebih pendek, compress di 50% context penuh.
+# K2.6 context lebih pendek, compress di 60% context penuh.
+# PREFIX CACHE: DeepSeek otomatis cache system prompt (SOUL.md + tools + skills).
+#   Cache hit = 10x lebih murah. Syarat: SOUL.md harus STATIC.
+#   Threshold 0.60 = compress lebih jarang = prefix stabil = lebih banyak cache hit.
 compression:
   enabled: true
-  threshold: 0.50
+  threshold: 0.60                # prefix cache optimized (naik dari 0.50)
   summary_provider: opencode-go
   summary_model: deepseek-v4-flash    # irit, summarize gak butuh kuat
 

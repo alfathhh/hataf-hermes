@@ -68,12 +68,15 @@ auxiliary:
     model: qwen3.5-plus               # binary classify, gak perlu kuat
 
 # ------------------------------------------------------------------------------
-# COMPRESSION — aggressive (threshold rendah = compress lebih sering)
+# COMPRESSION + PREFIX CACHE — aggressive compress, prefix tetap stabil
 # ------------------------------------------------------------------------------
-# Flash 1M context sebenarnya jarang overflow, tapi compress hemat token.
+# Flash 1M context jarang overflow. Threshold 0.50 = balance antara hemat + cache.
+# PREFIX CACHE: DeepSeek otomatis cache system prompt (SOUL.md + tools + skills).
+#   Cache hit = 10x lebih murah. Syarat: SOUL.md harus STATIC (jangan inject datetime).
+#   Threshold lebih tinggi = compress lebih jarang = prefix stabil lebih lama = cache hit.
 compression:
   enabled: true
-  threshold: 0.45                # compress lebih awal dari balanced
+  threshold: 0.50                # prefix cache friendly (naik dari 0.45)
   summary_provider: opencode-go
   summary_model: qwen3.5-plus    # paling murah untuk summarize
 

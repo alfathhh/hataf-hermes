@@ -83,7 +83,6 @@ hermes profile create research
 hermes profile create islamic
 hermes profile create finance
 hermes profile create media
-# (profile 'default' = main kalau lo mau pake nama default)
 ```
 
 Ini bikin struktur:
@@ -136,29 +135,24 @@ Ini bikin struktur:
 
 #### Profile: `coding`
 
-```bash
-# Masuk ke profile coding
-hermes --profile coding config edit
-```
-
 **`~/.hermes/profiles/coding/.env`**:
 ```bash
 TELEGRAM_BOT_TOKEN=<token hataf_code_bot>
 TELEGRAM_ALLOWED_USERS=<user_id_lo>
 OPENCODE_GO_API_KEY=<opencode_go_key>
-OPENROUTER_API_KEY=<openrouter_key>    # untuk vision auxiliary
+OPENROUTER_API_KEY=<openrouter_key>
 ```
 
 **`~/.hermes/profiles/coding/config.yaml`**:
 ```yaml
-# Profile: coding — Development workflow
-# Personality: temen coding, eksekutor, strict anti-hallucination untuk code
 model:
   provider: opencode-go
-  default: kimi-k2.6            # top quality untuk coding (SWE-Bench 58.6%)
+  default: kimi-k2.6
+  api_mode: chat_completions
 
 agent:
-  reasoning_effort: high        # coding butuh reasoning kuat
+  reasoning_effort: high
+  max_turns: 90
 
 smart_model_routing:
   enabled: true
@@ -166,7 +160,7 @@ smart_model_routing:
   max_simple_words: 28
   cheap_model:
     provider: opencode-go
-    model: deepseek-v4-flash    # Q&A coding simpel → murah
+    model: deepseek-v4-flash
 
 fallback_model:
   provider: opencode-go
@@ -176,15 +170,19 @@ auxiliary:
   vision:
     provider: openrouter
     model: google/gemini-2.5-flash
+    timeout: 30
   web_extract:
     provider: opencode-go
     model: qwen3.5-plus
+  compression:
+    provider: opencode-go
+    model: deepseek-v4-flash
 
 compression:
   enabled: true
-  threshold: 0.55               # coding sessions panjang
-  summary_provider: opencode-go
-  summary_model: deepseek-v4-flash
+  threshold: 0.55
+  target_ratio: 0.2
+  protect_last_n: 20
 
 memory:
   memory_enabled: true
@@ -195,7 +193,6 @@ display:
 
 streaming:
   enabled: true
-  edit_interval: 0.3
 ```
 
 **`~/.hermes/profiles/coding/SOUL.md`**:
@@ -216,17 +213,10 @@ FORMAT OUTPUT:
 - 🏋️ Exercise kecil
 - ⚠️ Pitfall yang sering terjadi
 - 🔗 Sumber (selalu di akhir)
-
-GAYA:
-- Kayak temen yang pinter ngajarin
-- Celebrate progress tapi jujur soal gap
-- Jangan fake enthusiasm ("Amazing!!!")
-- Challenge kalau user mau loncat level
 ```
 
 **Install skill yang relevan**:
 ```bash
-# Copy skill coding-related ke profile
 cp -r ~/.hermes/skills/coding-mentor ~/.hermes/profiles/coding/skills/
 cp -r ~/.hermes/skills/web-development ~/.hermes/profiles/coding/skills/
 cp -r ~/.hermes/skills/backend-proper ~/.hermes/profiles/coding/skills/
@@ -239,28 +229,19 @@ cp -r ~/.hermes/skills/code-review ~/.hermes/profiles/coding/skills/
 
 #### Profile: `islamic`
 
-**`~/.hermes/profiles/islamic/.env`**:
-```bash
-TELEGRAM_BOT_TOKEN=<token hataf_islam_bot>
-TELEGRAM_ALLOWED_USERS=<user_id_lo>
-OPENCODE_GO_API_KEY=<opencode_go_key>
-OPENROUTER_API_KEY=<openrouter_key>    # untuk vision auxiliary
-FIRECRAWL_API_KEY=<firecrawl_key>      # untuk web extract hadits/quran
-```
-
 **`~/.hermes/profiles/islamic/config.yaml`**:
 ```yaml
-# Profile: islamic — Islamic Study workflow
-# Personality: asisten ilmu, anti-halu dalil, sumber wajib, multi-mazhab
 model:
   provider: opencode-go
-  default: deepseek-v4-flash    # 1M context, dibutuhkan untuk research dalil panjang
+  default: deepseek-v4-flash
+  api_mode: chat_completions
 
 agent:
-  reasoning_effort: high        # WAJIB — agama butuh ketelitian, jangan buru-buru
+  reasoning_effort: high
+  max_turns: 90
 
 smart_model_routing:
-  enabled: false                # JANGAN cheap routing untuk agama — halu risk tinggi
+  enabled: false
 
 fallback_model:
   provider: opencode-go
@@ -270,15 +251,19 @@ auxiliary:
   vision:
     provider: openrouter
     model: google/gemini-2.5-flash
+    timeout: 30
   web_extract:
+    provider: opencode-go
+    model: qwen3.5-plus
+  compression:
     provider: opencode-go
     model: qwen3.5-plus
 
 compression:
   enabled: true
-  threshold: 0.60              # preserve context lebih lama — dalil jangan kehapus
-  summary_provider: opencode-go
-  summary_model: qwen3.5-plus
+  threshold: 0.60
+  target_ratio: 0.2
+  protect_last_n: 20
 
 memory:
   memory_enabled: true
@@ -286,43 +271,6 @@ memory:
 
 streaming:
   enabled: true
-  edit_interval: 0.3
-```
-
-**`~/.hermes/profiles/islamic/SOUL.md`**:
-```markdown
-Lo adalah asisten pencarian ilmu Islam. Bahasa lo-gw, casual tapi hormat.
-
-⛔ LARANGAN MUTLAK:
-- DILARANG mengarang ayat Al-Quran
-- DILARANG mengarang hadits (matan, sanad, perawi)
-- DILARANG bilang "hukumnya halal/haram" tanpa rujukan ulama spesifik
-- DILARANG tafsir sendiri — HARUS rujuk mufassir (Ibnu Katsir, Kemenag, dll)
-- DILARANG keluarkan fatwa
-- DILARANG tentukan derajat hadits tanpa verify sumber
-
-KALAU GAK KETEMU SUMBER → bilang "gak ketemu". TITIK.
-
-SUMBER YANG BOLEH:
-- Al-Quran: quran.kemenag.go.id, quran.com, tanzil.net
-- Hadits: sunnah.com, dorar.net, hadits.id
-- Tafsir: tafsirweb.com, Ibnu Katsir (via quran.com)
-- Fiqh: MUI (mui.or.id), NU Online (islam.nu.or.id), Muhammadiyah, islamqa.info, islamweb.net
-- Doa: Hisnul Muslim, sunnah.com
-
-HANDLING KHILAFIYAH:
-- WAJIB present semua pendapat (multi-mazhab)
-- JANGAN pilih satu sebagai "yang benar"
-- Label setiap pendapat dengan mazhab/ulama
-
-FORMAT OUTPUT:
-- 📌 TL;DR
-- 📖 Dalil (ayat + hadits dengan URL)
-- ⚖️ Pendapat ulama (tabel multi-mazhab)
-- ⚠️ Catatan (khilafiyah, disclaimer)
-- 🔗 Sumber (WAJIB setiap output)
-
-Disclaimer wajib di akhir: "Untuk fatwa personal, konsultasi ustadz yang lo percaya."
 ```
 
 **Install skill**:
@@ -335,22 +283,16 @@ cp -r ~/.hermes/skills/research-citation ~/.hermes/profiles/islamic/skills/
 
 #### Profile: `finance`
 
-**`~/.hermes/profiles/finance/.env`**:
-```bash
-TELEGRAM_BOT_TOKEN=<token hataf_money_bot>
-TELEGRAM_ALLOWED_USERS=<user_id_lo>
-OPENCODE_GO_API_KEY=<opencode_go_key>
-OPENROUTER_API_KEY=<openrouter_key>
-FIRECRAWL_API_KEY=<firecrawl_key>      # untuk scrape logammulia, OJK, marketplace
-```
-
 **`~/.hermes/profiles/finance/config.yaml`**:
 ```yaml
-# Profile: finance — Finance & Monitoring workflow
-# Personality: edukator keuangan, kalkulator, BUKAN financial advisor
 model:
   provider: opencode-go
-  default: deepseek-v4-flash    # 1M context, cukup untuk analisis laporan keuangan
+  default: deepseek-v4-flash
+  api_mode: chat_completions
+
+agent:
+  reasoning_effort: medium
+  max_turns: 90
 
 smart_model_routing:
   enabled: true
@@ -358,61 +300,32 @@ smart_model_routing:
   max_simple_words: 28
   cheap_model:
     provider: opencode-go
-    model: qwen3.5-plus          # Q&A simpel: "apa itu PER?", "jelaskan DCA"
+    model: qwen3.5-plus
 
 fallback_model:
   provider: opencode-go
   model: deepseek-v4-pro
 
-agent:
-  reasoning_effort: medium
-
 auxiliary:
   vision:
     provider: openrouter
     model: google/gemini-2.5-flash
+    timeout: 30
   web_extract:
+    provider: opencode-go
+    model: qwen3.5-plus
+  compression:
     provider: opencode-go
     model: qwen3.5-plus
 
 compression:
   enabled: true
   threshold: 0.50
-  summary_provider: opencode-go
-  summary_model: qwen3.5-plus
+  target_ratio: 0.2
+  protect_last_n: 20
 
 streaming:
   enabled: true
-  edit_interval: 0.3
-```
-
-**`~/.hermes/profiles/finance/SOUL.md`**:
-```markdown
-Lo adalah edukator keuangan personal. Bahasa lo-gw, casual.
-
-⚠️ BATASAN TEGAS:
-- BUKAN financial advisor. Lo TIDAK bilang "invest di X" atau "jual Y"
-- BUKAN pengganti CFP (Certified Financial Planner)
-- Lo kasih FRAMEWORK, HITUNGAN, dan OPSI — keputusan di tangan user
-- Untuk keputusan besar (>10% net worth) → arahkan ke CFP berlisensi
-
-BISA:
-- Jelasin konsep (compound interest, DCA, diversifikasi, dll)
-- Hitung skenario (pakai execute_code buat precision)
-- Bandingkan produk (deposito vs reksadana vs sukuk vs saham)
-- Screening saham syariah berdasarkan DES OJK
-- Monitor harga (emas, saham) dari sumber resmi
-- Organize budget
-
-DISCLAIMER WAJIB di output yang melibatkan angka/produk:
-"⚠️ Bukan nasihat investasi. Data screening otomatis. DYOR."
-
-FORMAT:
-- 📌 TL;DR
-- 📊 Data / hitungan (pakai tabel)
-- 💡 Insight
-- ⚠️ Risiko / caveat
-- 🔗 Sumber (WAJIB)
 ```
 
 **Install skill**:
@@ -428,28 +341,19 @@ cp -r ~/.hermes/skills/research-citation ~/.hermes/profiles/finance/skills/
 
 #### Profile: `research`
 
-**`~/.hermes/profiles/research/.env`**:
-```bash
-TELEGRAM_BOT_TOKEN=<token hataf_research_bot>
-TELEGRAM_ALLOWED_USERS=<user_id_lo>
-OPENCODE_GO_API_KEY=<opencode_go_key>
-OPENROUTER_API_KEY=<openrouter_key>
-FIRECRAWL_API_KEY=<firecrawl_key>
-```
-
 **`~/.hermes/profiles/research/config.yaml`**:
 ```yaml
-# Profile: research — Research & Analysis workflow
-# Personality: researcher serius, citation-enforcer, gak jawab tanpa sumber
 model:
   provider: opencode-go
-  default: deepseek-v4-flash    # 1M context — PDF panjang, dokumen tebal
+  default: deepseek-v4-flash
+  api_mode: chat_completions
 
 agent:
-  reasoning_effort: high        # analisis mendalam butuh reasoning kuat
+  reasoning_effort: high
+  max_turns: 90
 
 smart_model_routing:
-  enabled: false                # semua research butuh model yang sama kuat
+  enabled: false
 
 fallback_model:
   provider: opencode-go
@@ -458,16 +362,20 @@ fallback_model:
 auxiliary:
   vision:
     provider: openrouter
-    model: google/gemini-2.5-flash    # baca chart/diagram di paper
+    model: google/gemini-2.5-flash
+    timeout: 30
   web_extract:
+    provider: opencode-go
+    model: qwen3.5-plus
+  compression:
     provider: opencode-go
     model: qwen3.5-plus
 
 compression:
   enabled: true
-  threshold: 0.65              # preserve lebih lama — dokumen panjang butuh context
-  summary_provider: opencode-go
-  summary_model: qwen3.5-plus
+  threshold: 0.65
+  target_ratio: 0.2
+  protect_last_n: 20
 
 memory:
   memory_enabled: true
@@ -475,42 +383,6 @@ memory:
 
 streaming:
   enabled: true
-  edit_interval: 0.3
-```
-
-**`~/.hermes/profiles/research/SOUL.md`**:
-```markdown
-Lo adalah research assistant. Bahasa lo-gw, direct, no fluff.
-
-MISI:
-Bantu user riset topik apapun — temukan fakta, bongkar asumsi, kasih
-analisis multi-perspektif. BUKAN opini — data + reasoning.
-
-ATURAN WAJIB:
-- Setiap klaim HARUS ada sumber (URL yang bisa dicek)
-- Kalau gak ada sumber → bilang "gak ketemu", STOP
-- JANGAN jawab dari memori untuk fakta time-sensitive
-- Correlation ≠ causation — SELALU sebut ini kalau relevan
-- Kalau pertanyaan butuh expert (dokter, pengacara) → arahkan ke expert
-
-CARA KERJA:
-1. Decompose pertanyaan jadi sub-questions yang lebih kecil
-2. Search per sub-question
-3. Kasih jawaban PER sub-question dengan citation
-4. Synthesize jadi jawaban utama
-5. List "yang gw belum tau" secara eksplisit
-
-FORMAT:
-- 📌 TL;DR (conditional — bukan absolute)
-- 🔍 Evidence per claim (dengan URL)
-- ⚖️ Multiple perspectives (kalau ada)
-- ❓ What I don't know / gaps
-- 🔗 Sumber (WAJIB di akhir)
-
-DILARANG:
-- "Menurut pengetahuan saya..." tanpa sumber
-- Jawab soal prediksi masa depan dengan konfiden
-- Single perspective untuk topik yang contested
 ```
 
 **Install skill**:
@@ -527,24 +399,16 @@ cp -r ~/.hermes/skills/data-analysis ~/.hermes/profiles/research/skills/
 
 #### Profile: `media`
 
-**`~/.hermes/profiles/media/.env`**:
-```bash
-TELEGRAM_BOT_TOKEN=<token hataf_media_bot>
-TELEGRAM_ALLOWED_USERS=<user_id_lo>
-OPENCODE_GO_API_KEY=<opencode_go_key>
-OPENROUTER_API_KEY=<openrouter_key>
-```
-
 **`~/.hermes/profiles/media/config.yaml`**:
 ```yaml
-# Profile: media — Content & Media workflow
-# Personality: content creator assistant, creative, casual, efisien
 model:
   provider: opencode-go
-  default: qwen3.6-plus         # cukup untuk content generation
+  default: qwen3.6-plus
+  api_mode: chat_completions
 
 agent:
-  reasoning_effort: low         # content creation gak butuh deep thinking
+  reasoning_effort: low
+  max_turns: 90
 
 smart_model_routing:
   enabled: true
@@ -552,7 +416,7 @@ smart_model_routing:
   max_simple_words: 40
   cheap_model:
     provider: opencode-go
-    model: qwen3.5-plus          # edit caption, reformat, translate → murah
+    model: qwen3.5-plus
 
 fallback_model:
   provider: opencode-go
@@ -561,57 +425,27 @@ fallback_model:
 auxiliary:
   vision:
     provider: openrouter
-    model: google/gemini-2.5-flash    # analyze screenshot/image untuk konten
+    model: google/gemini-2.5-flash
+    timeout: 30
   web_extract:
+    provider: opencode-go
+    model: qwen3.5-plus
+  compression:
     provider: opencode-go
     model: qwen3.5-plus
 
 compression:
   enabled: true
-  threshold: 0.45              # agresif — media session gak perlu history panjang
-  summary_provider: opencode-go
-  summary_model: qwen3.5-plus
+  threshold: 0.45
+  target_ratio: 0.2
+  protect_last_n: 20
 
 memory:
   memory_enabled: true
-  user_profile_enabled: true   # ingat preferensi tone/style user
+  user_profile_enabled: true
 
 streaming:
   enabled: true
-  edit_interval: 0.3
-```
-
-**`~/.hermes/profiles/media/SOUL.md`**:
-```markdown
-Lo adalah content assistant. Bahasa lo-gw, casual, creative.
-
-MISI:
-Bantu bikin konten yang engaging — caption, artikel, script, download media.
-Output = copy yang siap pakai, bukan draft perlu direvisi besar.
-
-CARA KERJA PER REQUEST:
-- Caption IG → tanya: audience? goal? tone? CTA?
-- Artikel → tanya: platform? panjang? target reader?
-- Script video → tanya: durasi? format (talking head / slideshow)?
-- Download media → tanya: platform? format? kualitas?
-- Kalau context udah jelas → langsung eksekusi, gak perlu nanya
-
-GAYA NULIS:
-- Specific > generic ("hemat 2 jam/hari" bukan "hemat waktu")
-- Benefit > feature
-- Hook kuat di kalimat pertama
-- CTA clear dan CUMA 1 per piece
-- DILARANG opener AI slop: "Di era digital...", "Sebagai makhluk sosial..."
-
-FORMAT OUTPUT:
-- Langsung kasih konten (gak perlu intro panjang)
-- Kasih 1-2 variasi kalau relevan
-- Note singkat: "ini untuk [platform], [tone], [CTA]"
-
-DILARANG:
-- Ngarang fakta/statistik buat dipake di konten
-- Janjiin hasil tertentu ("caption ini pasti viral")
-- Fake enthusiasm di konten ("AMAZING PRODUCT!!!")
 ```
 
 **Install skill**:
@@ -627,22 +461,16 @@ cp -r ~/.hermes/skills/web-scrape ~/.hermes/profiles/media/skills/
 
 #### Profile: `main` (default — General Purpose)
 
-**`~/.hermes/profiles/main/.env`** (atau `~/.hermes/.env` kalau profile default):
-```bash
-TELEGRAM_BOT_TOKEN=<token hataf_main_bot>
-TELEGRAM_ALLOWED_USERS=<user_id_lo>
-OPENCODE_GO_API_KEY=<opencode_go_key>
-OPENROUTER_API_KEY=<openrouter_key>
-FIRECRAWL_API_KEY=<firecrawl_key>
-```
-
 **`~/.hermes/profiles/main/config.yaml`**:
 ```yaml
-# Profile: main — General purpose, DM personal
-# Semua 25 skill aktif, primary model terbaik
 model:
   provider: opencode-go
-  default: kimi-k2.6            # terbaik di OpenCode Go untuk general use
+  default: kimi-k2.6
+  api_mode: chat_completions
+
+agent:
+  reasoning_effort: ""
+  max_turns: 90
 
 smart_model_routing:
   enabled: true
@@ -656,25 +484,26 @@ fallback_model:
   provider: opencode-go
   model: deepseek-v4-pro
 
-agent:
-  reasoning_effort: medium
-
 auxiliary:
   vision:
     provider: openrouter
     model: google/gemini-2.5-flash
+    timeout: 30
   web_extract:
     provider: opencode-go
     model: qwen3.5-plus
   approval:
     provider: opencode-go
     model: deepseek-v4-flash
+  compression:
+    provider: opencode-go
+    model: deepseek-v4-flash
 
 compression:
   enabled: true
   threshold: 0.50
-  summary_provider: opencode-go
-  summary_model: deepseek-v4-flash
+  target_ratio: 0.2
+  protect_last_n: 20
 
 delegation:
   provider: opencode-go
@@ -688,7 +517,6 @@ memory:
 
 streaming:
   enabled: true
-  edit_interval: 0.3
 
 display:
   show_cost: true
@@ -704,13 +532,12 @@ cp -r ~/.hermes/skills/* ~/.hermes/profiles/main/skills/
 ### Step 4: Setup gateway per profile
 
 ```bash
-# Setup gateway tiap profile (interactive wizard per profile)
-hermes --profile main     gateway setup    # paste token main bot
-hermes --profile coding   gateway setup    # paste token coding bot
-hermes --profile research gateway setup    # paste token research bot
-hermes --profile islamic  gateway setup    # paste token islamic bot
-hermes --profile finance  gateway setup    # paste token finance bot
-hermes --profile media    gateway setup    # paste token media bot
+hermes --profile main     gateway setup
+hermes --profile coding   gateway setup
+hermes --profile research gateway setup
+hermes --profile islamic  gateway setup
+hermes --profile finance  gateway setup
+hermes --profile media    gateway setup
 ```
 
 ---
@@ -729,29 +556,6 @@ hermes --profile media    gateway
 ```
 
 #### Opsi B: Systemd services (production, recommended)
-
-Bikin 1 service file per profile. Contoh untuk `coding`:
-
-```bash
-sudo cat > /etc/systemd/system/hermes-coding.service << 'EOF'
-[Unit]
-Description=Hermes Agent - Coding Profile
-After=network.target
-
-[Service]
-Type=simple
-User=<username_lo>
-ExecStart=/home/<username_lo>/.local/bin/hermes --profile coding gateway
-Restart=always
-RestartSec=10
-Environment=HOME=/home/<username_lo>
-
-[Install]
-WantedBy=multi-user.target
-EOF
-```
-
-Buat semua profile (ganti `coding` → nama profile masing-masing):
 
 ```bash
 for profile in main coding research islamic finance media; do
@@ -798,35 +602,12 @@ Grup: "💰 Finance Hataf"   → add @hataf_money_bot    → saham, emas, litera
 Grup: "🎨 Media Hataf"     → add @hataf_media_bot    → copywriting, download, scrape
 ```
 
-> Tips: lo bisa mulai dari 2-3 grup dulu, tambah sisanya kalau udah nyaman.
-
----
-
-### Step 7: Set home channel per profile (untuk cronjob delivery)
-
-Di tiap group, kirim:
-
-```
-/sethome
-```
-
-Bot akan set group tersebut sebagai delivery target untuk cronjob profile itu.
-
-Atau manual di `.env` profile:
-
-```bash
-# Di ~/.hermes/profiles/finance/.env
-TELEGRAM_HOME_CHANNEL=-1001234567890    # ID grup Finance
-```
-
 ---
 
 ## 4. Cronjob per profile
 
-Cronjob attach ke profile masing-masing:
-
 ```bash
-# Harga emas → jalan di profile finance, deliver ke grup Finance
+# Harga emas → profile finance
 hermes --profile finance cron create "0 9 * * 1-5" \
   "Ambil harga emas Antam dari logammulia.com. Alert kalau berubah >1%." \
   --skill harga-emas --name "Emas Harian"
@@ -846,16 +627,17 @@ hermes --profile coding cron create "0 8 * * *" \
 
 ## 5. Tabel ringkasan — 6 Profile
 
-| Profile | Bot | Grup | Model | Reasoning | Skills | Personality |
-|---|---|---|---|---|---|---|
-| `main` | @hataf_main_bot | 🏠 DM personal | Kimi K2.6 | medium | Semua 25 | General purpose, anti-halu, semua bisa |
-| `coding` | @hataf_code_bot | 💻 Coding | Kimi K2.6 + Flash routing | high | coding-mentor, web-dev, backend, frontend, ui-ux, code-review, devops, data-analysis | Temen coding, eksekutor, strict |
-| `research` | @hataf_research_bot | 🔬 Research | DeepSeek Flash (1M ctx) | high | deep-analysis, research-citation, study-buddy, pdf-summarize, video-summary, data-analysis | Researcher, citation-enforcer |
-| `islamic` | @hataf_islam_bot | 🕌 Islamic | DeepSeek Flash (1M ctx) | high | islamic-study, research-citation | Asisten ilmu, anti-halu dalil, multi-mazhab |
-| `finance` | @hataf_money_bot | 💰 Finance | DeepSeek Flash + routing | medium | financial-literacy, saham-syariah, harga-emas, web-scrape, marketplace-scrape | Edukator, kalkulator, disclaimer enforcer |
-| `media` | @hataf_media_bot | 🎨 Media | Qwen3.6 Plus | low | copywriting, music-download, social-media-scrape, video-summary, web-scrape | Content creator assistant, creative |
+| Profile | Bot | Model | Reasoning | Skills | lean-ctx benefit |
+|---|---|---|---|---|---|
+| `main` | @hataf_main_bot | Kimi K2.6 | medium | Semua 25 | Medium |
+| `coding` | @hataf_code_bot | Kimi K2.6 + Flash routing | high | coding-mentor, web-dev, backend, frontend, ui-ux, code-review | High |
+| `research` | @hataf_research_bot | DeepSeek Flash (1M ctx) | high | deep-analysis, research-citation, study-buddy, pdf-summarize, video-summary, data-analysis | Medium |
+| `islamic` | @hataf_islam_bot | DeepSeek Flash (1M ctx) | high | islamic-study, research-citation | Low |
+| `finance` | @hataf_money_bot | DeepSeek Flash + routing | medium | financial-literacy, saham-syariah, harga-emas, web-scrape, marketplace-scrape | Medium |
+| `media` | @hataf_media_bot | Qwen3.6 Plus | low | copywriting, music-download, social-media-scrape, video-summary, web-scrape | Low |
 
-> Semua profile memakai **OpenCode Go** sebagai provider. Tidak ada API key DeepSeek atau OpenAI terpisah — cukup `OPENCODE_GO_API_KEY` + `OPENROUTER_API_KEY` untuk vision.
+> Semua profile memakai **OpenCode Go** sebagai provider. Tidak ada API key DeepSeek atau OpenAI terpisah.
+> Install **lean-ctx** (`cargo install lean-ctx`) untuk compress tool output 89-99% — terutama berguna di profile `coding`.
 
 ---
 
@@ -863,9 +645,7 @@ hermes --profile coding cron create "0 8 * * *" \
 
 **Q: Resource usage di VPS berapa?**
 
-Per gateway process ≈ 50-150 MB RAM (Python process). 4 profile = ~400-600 MB idle. 1 GB VPS tight, 2 GB comfortable, 4 GB aman.
-
-> ⚠️ Angka di atas **perkiraan kasar** dari pengalaman umum Python web processes, bukan benchmark resmi Hermes. Test di setup lo.
+Per gateway process ≈ 50-150 MB RAM. 6 profile = ~400-900 MB idle. 2 GB VPS comfortable, 4 GB aman.
 
 **Q: Kalau 1 profile crash, yang lain ikut?**
 
@@ -873,68 +653,21 @@ Tidak. Tiap profile = proses terpisah. Systemd auto-restart kalau crash.
 
 **Q: Bisa share memory antar profile?**
 
-Default: TIDAK. Tiap profile punya `memories/` sendiri. Kalau lo mau share fakta (misal "user timezone Asia/Jakarta"), tulis manual di MEMORY.md tiap profile.
-
-**Q: Bisa 1 user di multiple group?**
-
-Bisa. `TELEGRAM_ALLOWED_USERS` di-set sama (user ID lo) di semua profile. Lo bisa chat di semua group.
-
-**Q: Bisa gw tambahin profile baru nanti?**
-
-```bash
-hermes profile create <nama-baru>
-# Setup .env, config.yaml, SOUL.md, skills
-# Bikin bot baru di BotFather
-# hermes --profile <nama-baru> gateway setup
-# Bikin service baru
-```
+Default: TIDAK. Tiap profile punya `memories/` sendiri. Kalau mau share fakta, tulis manual di MEMORY.md tiap profile.
 
 **Q: Berapa biaya per bulan roughly?**
 
 | Komponen | Estimasi |
 |---|---|
-| VPS 2-4 GB | $5-15/bulan (DigitalOcean, Hetzner) |
-| DeepSeek V4 Flash | $5-30/bulan tergantung usage |
-| OpenCode Go | $10/bulan (fixed subscription) |
-| OpenRouter (auxiliary) | $1-5/bulan (Gemini Flash murah) |
-| Firecrawl (web scrape) | Free tier mungkin cukup, atau $0-20 |
-| **Total** | **~$20-60/bulan** |
-
-> ⚠️ Estimasi sangat kasar. Tergantung seberapa aktif lo chat + berapa cronjob jalan. Monitor di `/usage` tiap profile.
+| VPS 2-4 GB | $5-15/bulan |
+| OpenCode Go | $10/bulan (fixed) |
+| OpenRouter (auxiliary) | $1-5/bulan |
+| Firecrawl (web scrape) | Free tier / $0-20 |
+| **Total** | **~$16-50/bulan** |
 
 ---
 
-## 7. Yang gw belum yakin
-
-- **Exact profile folder structure**: dari docs dan README, profiles override config — tapi exact path untuk `skills/`, `memories/`, `SOUL.md` per profile gw belum 100% confirm dari source code. **Jalanin `hermes profile create X` dulu**, liat apa yang di-generate, lalu adapt.
-- **Multiple systemd services conflict**: secara teori gak conflict (beda PID, beda port kalau ada, beda bot token). Tapi kalau Hermes pake shared lockfile (misal `~/.hermes/state.db`), mungkin ada issue. Test dulu 2 profile sebelum scale ke 4.
-- **Telegram rate limit**: kalau 4 bot lo di-spam barengan, Telegram punya rate limit per bot (~30 msg/detik). Untuk personal use, gak akan hit.
-- **Apakah `hermes --profile X gateway install --system` otomatis bikin service name unik?** Kemungkinan ya, tapi kalau conflict → bikin manual pakai template systemd di atas.
-
----
-
-## 8. Script setup cepat
-
-```bash
-#!/bin/bash
-# setup-profiles.sh — jalanin setelah Hermes terinstall
-
-PROFILES=("main" "coding" "research" "islamic" "finance" "media")
-
-for profile in "${PROFILES[@]}"; do
-  echo "=== Creating profile: $profile ==="
-  hermes profile create "$profile"
-  echo "  → Copy SOUL.md, config.yaml, .env, skills ke ~/.hermes/profiles/$profile/"
-  echo "  → Jalanin: hermes --profile $profile gateway setup"
-  echo ""
-done
-
-echo "Done. Setup gateway per profile, lalu start services."
-```
-
----
-
-## Lanjut dari sini
+## 7. Lanjut dari sini
 
 1. `hermes profile create coding` → test dulu 1 profile
 2. Confirm folder structure yang di-generate
@@ -944,4 +677,4 @@ echo "Done. Setup gateway per profile, lalu start services."
 6. Install as systemd services
 7. Set cronjob per profile
 
-**Jangan setup 4 sekaligus** — start dari 1, pastiin jalan, baru expand.
+**Jangan setup 6 sekaligus** — start dari 1, pastiin jalan, baru expand.

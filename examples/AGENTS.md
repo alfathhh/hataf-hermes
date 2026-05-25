@@ -1,20 +1,18 @@
-# AGENTS.md — Project Conventions (Optimized for Weak Models)
+# AGENTS.md — Project Conventions
 
 Letakkan file ini di **root repo project lo**. Hermes auto-load setiap kali
 working directory ada di project tersebut atau subfoldernya.
 
-> File ini di-optimize agar model murah (DeepSeek V4 Flash, Qwen3.5) bisa
-> follow instruksi dengan benar. Format: decision tree, bukan prose.
+> Versi ini untuk model yang cukup pintar (Kimi K2.6, DeepSeek V4 Flash/Pro).
+> Model ini bisa follow prose + decision tree. Format: campuran pragmatis.
 
 ---
 
-## SKILL ROUTING — Decision Tree
+## SKILL ROUTING
 
-Saat user kirim pesan, ikuti tree ini untuk pilih skill:
+Saat user kirim pesan, pilih skill yang paling cocok:
 
 ```
-INPUT: [pesan user]
-
 IF pesan tentang coding/programming:
   IF "review" OR "audit" OR "cek kode" → skill: code-review
   IF "bikin backend" OR "API" OR "endpoint" OR "database" → skill: backend-proper
@@ -24,121 +22,142 @@ IF pesan tentang coding/programming:
   IF "deploy" OR "Docker" OR "server" OR "CI/CD" OR "nginx" → skill: devops-networking
 
 IF pesan tentang research/analisis:
-  IF "analisis mendalam" OR "trade-off" OR "arsitektur" OR "keputusan besar" → skill: deep-analysis
-  IF "fakta" OR "data" OR "sumber" OR "citation" OR "berapa" OR "kapan" → skill: research-citation
-  IF "data" AND ("CSV" OR "pandas" OR "chart" OR "visualisasi") → skill: data-analysis
+  IF "analisis mendalam" OR "trade-off" OR "arsitektur" → skill: deep-analysis
+  IF "fakta" OR "data" OR "sumber" OR "citation" → skill: research-citation
+  IF "data" AND ("CSV" OR "pandas" OR "chart") → skill: data-analysis
 
 IF pesan tentang keuangan:
   IF "saham" AND ("syariah" OR "DES" OR "JII") → skill: saham-syariah
   IF "emas" OR "antam" OR "logammulia" → skill: harga-emas
-  IF "budget" OR "investasi" OR "compound" OR "nabung" OR "pensiun" → skill: financial-literacy
+  IF "budget" OR "investasi" OR "compound" → skill: financial-literacy
 
 IF pesan tentang Islam:
-  IF "ayat" OR "hadits" OR "fiqh" OR "doa" OR "hukum islam" → skill: islamic-study
+  IF "ayat" OR "hadits" OR "fiqh" OR "doa" → skill: islamic-study
 
 IF pesan tentang scraping/download:
-  IF "Instagram" OR "Twitter" OR "X" OR "TikTok" OR "social media" → skill: social-media-scrape
-  IF "Tokopedia" OR "Shopee" OR "marketplace" OR "ecommerce" → skill: marketplace-scrape
+  IF "Instagram" OR "Twitter" OR "TikTok" → skill: social-media-scrape
+  IF "Tokopedia" OR "Shopee" OR "marketplace" → skill: marketplace-scrape
   IF "scrape" OR "extract" OR "monitor web" → skill: web-scrape
-  IF "download lagu" OR "YouTube" OR "Tidal" OR "Spotify" → skill: music-download
+  IF "download lagu" OR "YouTube" OR "Tidal" → skill: music-download
 
 IF pesan tentang konten/dokumen:
-  IF "PDF" OR "summarize dokumen" OR "ringkas paper" → skill: pdf-summarize
-  IF "video" OR "transkrip" OR "ringkas video" → skill: video-summary
-  IF "nulis" OR "caption" OR "artikel" OR "copywriting" OR "email" → skill: copywriting
+  IF "PDF" OR "summarize dokumen" → skill: pdf-summarize
+  IF "video" OR "transkrip" → skill: video-summary
+  IF "nulis" OR "caption" OR "artikel" → skill: copywriting
 
 IF pesan tentang belajar (bukan coding):
-  IF user kasih bahan/file AND minta diskusi/quiz → skill: study-buddy
+  IF user kasih bahan/file + minta diskusi/quiz → skill: study-buddy
 
-IF pesan tentang UI/UX review (bukan implementasi):
-  IF "review UI" OR "UX" OR "accessibility" OR "design system" → skill: ui-ux
-
-IF pesan tentang meta/agent:
-  IF "weekly review" OR "self-improvement" → skill: weekly-review
-  IF "full power" OR "deep work" OR "semua tools" → skill: claude-superpowers
-
-IF tidak match satupun → jawab langsung tanpa skill khusus
+IF tidak match → jawab langsung tanpa skill khusus
 ```
 
 ---
 
-## Project: <NAMA_PROJECT>
+## Project Stack
 
-**Stack** (ISI SESUAI PROJECT LO):
-- Language: <Go 1.22 / Python 3.11 / Node.js 20 / dst>
-- Framework: <chi / FastAPI / Next.js 14 / dst>
-- Database: <PostgreSQL 16 / SQLite / dst>
-- Deploy: <Vercel / Railway / VPS sendiri / dst>
+**Languages**:
+- Python 3.11+
+- Node.js 20+ / TypeScript 5+
+- JavaScript (browser + server)
 
-**Direktori penting**:
-- `cmd/` — entrypoint
-- `internal/` — non-exported code
-- `pkg/` — shared library
-- (sesuaikan)
+**Backend Frameworks** (pilih sesuai project):
+- FastAPI (Python — API utama)
+- Express / Fastify (Node.js)
+- Next.js API Routes (kalau fullstack)
+
+**Frontend Frameworks**:
+- Next.js 14+ (App Router, React Server Components)
+- React 18+
+- Vue 3 / Nuxt 3 (kalau project Vue-based)
+- Tailwind CSS (styling utama)
+
+**Database**:
+- PostgreSQL (primary relational)
+- SQLite (untuk project kecil / prototyping)
+- Redis (caching, queue)
+- Prisma / Drizzle ORM (Node.js)
+- SQLAlchemy / SQLModel (Python)
+
+**Package Manager**:
+- pnpm (Node.js — default)
+- pip / uv (Python)
+
+**Testing**:
+- Vitest (Node.js/TS — default)
+- pytest (Python)
+- Playwright (E2E kalau perlu)
+
+**Deploy**:
+- Docker + docker-compose
+- Vercel (frontend/fullstack)
+- Railway / Render (backend)
+- VPS sendiri (kalau butuh kontrol penuh)
 
 ---
 
-## Convention
+## Code Style
 
-### Code style
-- Indentasi: **tab** untuk Go, **4 spasi** untuk Python, **2 spasi** untuk JS/TS
-- Line length: **120 karakter** max
-- Naming: `camelCase` untuk JS, `snake_case` untuk Python, `PascalCase` untuk Go exports
-- Komentar: jelas, dalam Bahasa Inggris
+### Python
+- Indentasi: **4 spasi**
+- Formatter: `ruff format`
+- Linter: `ruff check`
+- Type hints: wajib untuk public functions
+- Naming: `snake_case` (variable, function), `PascalCase` (class)
+- Docstring: Google style
 
-### Git
-- Branch: `feat/...`, `fix/...`, `chore/...`
-- Commit message: imperatif, max 72 karakter subject
+### TypeScript / JavaScript
+- Indentasi: **2 spasi**
+- Formatter: Biome atau Prettier
+- Linter: Biome atau ESLint
+- Naming: `camelCase` (variable, function), `PascalCase` (component, class, type)
+- Prefer `const` over `let`, never `var`
+- Strict mode TypeScript (no `any` kecuali justified)
+
+### Umum
+- Line length: **100 karakter** max (Python), **100** (TS/JS)
+- Komentar: Bahasa Inggris
+- Import: absolute > relative (kecuali co-located modules)
+
+---
+
+## Git Convention
+
+- Branch: `feat/...`, `fix/...`, `chore/...`, `refactor/...`
+- Commit message: imperatif, max 72 char subject, Bahasa Inggris
 - Squash sebelum merge ke `main`
-
-### Test
-- Run all tests: `make test` (atau `go test ./...`, `pytest`, `npm test`)
-- Coverage minimum: 70% untuk paket baru
-- Test naming: `Test<Function>_<Case>`
+- PR review wajib sebelum merge (kalau ada reviewer)
 
 ---
 
 ## Build & Run
 
 ```bash
-# Install deps
-make install              # atau: go mod download / pip install -r requirements.txt / npm i
+# Python project
+pip install -e ".[dev]"           # atau: uv pip install -e ".[dev]"
+pytest                            # run tests
+ruff check . && ruff format .     # lint + format
 
-# Run dev server
-make dev                  # atau: go run ./cmd/api / uvicorn main:app --reload
+# Node.js / TypeScript project
+pnpm install
+pnpm dev                          # dev server
+pnpm build                        # production build
+pnpm lint                         # lint (biome atau eslint)
+pnpm test                         # vitest
 
-# Build production
-make build
-
-# Lint
-make lint                 # atau: golangci-lint run / ruff check . / npm run lint
-
-# Tipe check (kalau ada)
-make typecheck            # atau: mypy . / tsc --noEmit
+# Docker
+docker compose up -d              # start semua service
+docker compose logs -f            # lihat logs
 ```
 
 ---
 
-## Model-Aware Rules
+## Kebiasaan Project
 
-### IF model = cheap (DeepSeek V4 Flash / Qwen3.5):
-- JANGAN attempt deep analysis — delegasikan ke primary model
-- JANGAN jawab pertanyaan fakta current dari memori — HARUS web_search
-- JANGAN nulis code >50 baris tanpa existing pattern di repo
-- BOLEH: translate, format, simple Q&A, summarize, classify
-
-### IF model = primary (Kimi K2.6 / DeepSeek V4 Pro):
-- BOLEH: complex coding, architecture decision, multi-file refactor
-- TETAP: verify sebelum claim, tool-first
-
----
-
-## Kebiasaan project
-
-- **Migration database**: jangan ALTER TABLE manual — selalu via tools migration
+- **Migration database**: selalu via migration tool (Prisma Migrate, Alembic) — jangan ALTER TABLE manual
 - **Secrets**: `.env` di-gitignore. Jangan pernah commit secrets.
-- **Dependency baru**: kalau mau install dependency baru, **tanya dulu** ke user
-- **Refactor besar**: kalau perubahan affect >10 file, bikin PR plan dulu
+- **Dependency baru**: tanya user dulu sebelum install yang berat / unfamiliar
+- **Refactor besar**: kalau affect >10 file, bikin plan dulu sebelum mulai
+- **Error handling**: explicit — no bare `except:` (Python), no swallowed `.catch()` (JS)
 
 ---
 
@@ -151,52 +170,49 @@ DO NOT: modify lockfile tanpa user approval
 DO NOT: run command network-heavy tanpa alasan jelas
 DO NOT: jawab "menurut saya" untuk fakta yang bisa dicek
 DO NOT: skip verification step
+DO NOT: install dependency tanpa tanya user
+DO NOT: pake `any` di TypeScript tanpa komentar alasan
 ```
 
 ---
 
-## Quick Commands (zero token, langsung execute)
+## Model-Aware Rules
+
+### IF model = strong (Kimi K2.6, DeepSeek V4 Pro):
+- BOLEH: complex coding, multi-file refactor, architecture decision
+- BOLEH: nulis code >100 baris kalau pattern jelas
+- TETAP: verify sebelum claim, tool-first untuk fakta current
+- BOLEH: infer context dari code tanpa di-spell-out setiap detail
+
+### IF model = medium (DeepSeek V4 Flash):
+- BOLEH: coding standard, single-file changes, follow existing pattern
+- HATI-HATI: multi-file refactor (cek impact dulu)
+- TETAP: verify facts, tool-first
+- PREFER: match existing patterns, jangan over-engineer
+
+### IF model = cheap (Qwen3.5 Plus):
+- JANGAN: attempt complex coding tanpa existing pattern
+- JANGAN: jawab fakta current dari memori — HARUS web_search
+- BOLEH: translate, format, simple Q&A, summarize, classify
+
+---
+
+## Quick Commands (zero token)
 
 ```bash
-# Lihat status
+# Status
 git status && git log -5 --oneline
 
 # Diff sebelum commit
 git diff --staged
 
-# Cek lint sebelum commit
-make lint && make test
+# Lint sebelum commit
+pnpm lint && pnpm test        # Node.js
+ruff check . && pytest        # Python
 ```
 
 ---
 
-## Contoh Output yang BENAR (untuk model murah)
+## Catatan Personal
 
-### Kalau user tanya fakta:
-```
-User: "Berapa harga emas hari ini?"
-Agent: [LANGSUNG web_extract ke logammulia.com, BUKAN jawab dari memori]
-```
-
-### Kalau user minta coding:
-```
-User: "Tambahin endpoint GET /users"
-Agent:
-1. Baca file existing (handler, router, model)
-2. Match pattern yang udah ada
-3. Tulis code dengan pattern sama
-4. Run lint + test
-5. Present hasil
-```
-
-### Kalau user tanya opini:
-```
-User: "Mendingan Next.js atau Nuxt?"
-Agent: Kasih perbandingan tabel, BUKAN pilihkan satu jawaban
-```
-
----
-
-## Catatan personal
-
-(Tambah catatan-catatan kecil di sini yang bantu agent inget context.)
+(Tambah catatan-catatan kecil di sini yang bantu agent inget context project.)

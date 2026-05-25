@@ -1,0 +1,189 @@
+# ==============================================================================
+# Hermes Agent — config-balanced.yaml
+# Strategy: BALANCED — Kimi K2.6 primary (near-Opus quality), smart routing
+#
+# Cocok untuk: coding serius, code review, analisis arsitektur, mixed use case
+# Cost estimasi: ~$11-15/bulan (OpenCode Go $10 + OpenRouter $1-3 untuk vision)
+#
+# Trade-off:
+#   ✅ K2.6 near-Opus level untuk coding (SWE-Bench Pro 58.6%)
+#   ✅ Smart routing hemat quota K2.6 yang terbatas
+#   ⚠️ K2.6 quota terbatas (1,150 credits) — routing WAJIB ON
+#   ⚠️ Context lebih pendek dari Flash (128K-256K vs 1M)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# PRIMARY MODEL — Kimi K2.6 (top tier di OpenCode Go bundle)
+# ------------------------------------------------------------------------------
+# K2.6: SWE-Bench Pro 58.6% — near-Opus level.
+# Quota: 1,150 credits. Smart routing WAJIB ON biar gak boros.
+model:
+  provider: opencode-go
+  default: kimi-k2.6
+
+# ------------------------------------------------------------------------------
+# FALLBACK MODEL — DeepSeek V4 Pro (kalau K2.6 rate-limit/error)
+# ------------------------------------------------------------------------------
+# V4 Pro: 3,450 credits. Fallback otomatis kalau primary down.
+fallback_model:
+  provider: opencode-go
+  model: deepseek-v4-pro
+
+# ------------------------------------------------------------------------------
+# SMART MODEL ROUTING — turn simpel → DeepSeek V4 Flash (irit)
+# ------------------------------------------------------------------------------
+# KUNCI strategy ini: 60-70% turn (halo, translate, Q&A pendek) → Flash.
+# Hanya turn kompleks (coding, debug, analysis) → K2.6.
+smart_model_routing:
+  enabled: true
+  max_simple_chars: 160          # < 160 char → Flash
+  max_simple_words: 28           # < 28 kata → Flash
+  cheap_model:
+    provider: opencode-go
+    model: deepseek-v4-flash     # 31,650 credits = paling irit di bundle
+
+# ------------------------------------------------------------------------------
+# REASONING EFFORT — medium default
+# ------------------------------------------------------------------------------
+# K2.6 reasoning kuat, biarkan dia kerja di medium.
+# Naik ke high/xhigh manual kalau butuh deep architecture review.
+agent:
+  reasoning_effort: ""           # kosong = medium (default Hermes)
+  max_turns: 90
+
+# ------------------------------------------------------------------------------
+# AUXILIARY MODELS — semua OpenCode Go kecuali vision
+# ------------------------------------------------------------------------------
+auxiliary:
+  vision:
+    provider: openrouter
+    model: google/gemini-2.5-flash    # HARUS OpenRouter — K2.6 tidak vision-capable
+    timeout: 30
+  web_extract:
+    provider: opencode-go
+    model: qwen3.5-plus               # adequate untuk teks, hemat
+  approval:
+    provider: opencode-go
+    model: deepseek-v4-flash          # binary classify → paling irit
+
+# ------------------------------------------------------------------------------
+# COMPRESSION — moderate (50% threshold)
+# ------------------------------------------------------------------------------
+# K2.6 context lebih pendek, compress di 50% context penuh.
+compression:
+  enabled: true
+  threshold: 0.50
+  summary_provider: opencode-go
+  summary_model: deepseek-v4-flash    # irit, summarize gak butuh kuat
+
+# ------------------------------------------------------------------------------
+# DELEGATION — Qwen3.6 Plus (balance quality/cost untuk subagent)
+# ------------------------------------------------------------------------------
+delegation:
+  provider: opencode-go
+  model: qwen3.6-plus
+
+# ------------------------------------------------------------------------------
+# MEMORY
+# ------------------------------------------------------------------------------
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+  memory_char_limit: 2200
+  user_char_limit: 1375
+
+# ------------------------------------------------------------------------------
+# WEB SEARCH BACKEND
+# ------------------------------------------------------------------------------
+web:
+  backend: firecrawl
+
+# ------------------------------------------------------------------------------
+# TERMINAL BACKEND
+# ------------------------------------------------------------------------------
+terminal:
+  backend: local
+  cwd: "."
+  timeout: 180
+  persistent_shell: true
+
+# ------------------------------------------------------------------------------
+# APPROVALS
+# ------------------------------------------------------------------------------
+approvals:
+  mode: manual
+
+# ------------------------------------------------------------------------------
+# CHECKPOINTS
+# ------------------------------------------------------------------------------
+checkpoints:
+  enabled: true
+  max_snapshots: 50
+
+# ------------------------------------------------------------------------------
+# DISPLAY
+# ------------------------------------------------------------------------------
+display:
+  tool_progress: all
+  compact: false
+  show_cost: true
+  bell_on_complete: true
+  show_reasoning: false
+
+# ------------------------------------------------------------------------------
+# QUICK COMMANDS
+# ------------------------------------------------------------------------------
+quick_commands:
+  status:
+    type: exec
+    command: systemctl status hermes-agent.service 2>/dev/null || echo "Service not found"
+  disk:
+    type: exec
+    command: df -h /
+  uptime:
+    type: exec
+    command: uptime
+  hermes_update:
+    type: exec
+    command: hermes update
+
+# ------------------------------------------------------------------------------
+# STREAMING
+# ------------------------------------------------------------------------------
+streaming:
+  enabled: true
+  transport: edit
+  edit_interval: 0.3
+  buffer_threshold: 40
+
+# ------------------------------------------------------------------------------
+# PRIVACY
+# ------------------------------------------------------------------------------
+privacy:
+  redact_pii: false
+
+# ------------------------------------------------------------------------------
+# GROUP CHAT
+# ------------------------------------------------------------------------------
+group_sessions_per_user: true
+
+# ==============================================================================
+# NOTES untuk BALANCED strategy:
+#
+# 1. Smart routing adalah kunci — tanpa ini, K2.6 quota habis cepat.
+#    → Threshold 160 char/28 kata: ketat → lebih sering ke K2.6
+#    → Kalau quota K2.6 sering habis, longgarkan ke 200/35
+#
+# 2. K2.6 terbaik untuk: coding, refactor, code review, system design.
+#    → Untuk research/Q&A yang gak butuh coding quality → Flash sudah cukup.
+#
+# 3. Kalau sering hit K2.6 rate limit:
+#    → Cek /usage untuk lihat distribusi turn
+#    → Pertimbangkan switch ke config-hybrid.yaml
+#
+# 4. Context window K2.6 (~128K-256K):
+#    → Untuk task yang butuh 1M context (PDF panjang, codebase besar):
+#      ketik /model deepseek-v4-flash untuk 1 session itu
+#
+# 5. Ini adalah config DEFAULT yang paling direkomendasikan untuk developer.
+# ==============================================================================

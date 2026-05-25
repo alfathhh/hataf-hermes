@@ -16,6 +16,7 @@
 model:
   provider: opencode-go
   default: kimi-k2.6
+  api_mode: chat_completions
 
 # ------------------------------------------------------------------------------
 # FALLBACK MODEL — kalau K2.6 rate limit / error
@@ -56,16 +57,20 @@ auxiliary:
   approval:
     provider: opencode-go
     model: deepseek-v4-flash      # 31,650 credits, binary classify doang
+  compression:
+    provider: opencode-go
+    model: deepseek-v4-flash      # model paling irit untuk summarize history
 
 # ------------------------------------------------------------------------------
 # CONTEXT COMPRESSION — kompres conversation lama otomatis
 # ------------------------------------------------------------------------------
-# Pake model paling irit (V4 Flash). Task-nya cuma summarize, gak perlu pinter.
+# Model untuk summarize diatur via auxiliary.compression di atas.
+# Task-nya cuma summarize, gak perlu pinter.
 compression:
   enabled: true
   threshold: 0.50                 # compress saat 50% context penuh
-  summary_provider: opencode-go
-  summary_model: deepseek-v4-flash
+  target_ratio: 0.2
+  protect_last_n: 20
 
 # ------------------------------------------------------------------------------
 # REASONING EFFORT — default medium. Naikkan kalau butuh deep thinking.
@@ -151,9 +156,6 @@ quick_commands:
 # ------------------------------------------------------------------------------
 streaming:
   enabled: true
-  transport: edit
-  edit_interval: 0.3
-  buffer_threshold: 40
 
 # ------------------------------------------------------------------------------
 # PRIVACY

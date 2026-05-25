@@ -2,7 +2,7 @@
 
 Tutorial step-by-step buat ngebangun Hermes Agent (by [Nous Research](https://nousresearch.com)) jadi alat AI personal yang **jujur, anti-halu, hemat token, dan jalan 24/7 lewat Telegram**.
 
-> Stack: Hermes Agent + OpenCode Go bundle (Kimi K2.6 / DeepSeek V4 Flash / Qwen) + OpenRouter (vision) + Telegram gateway + cronjob + RTK token optimizer.
+> Stack: Hermes Agent + OpenCode Go bundle (Kimi K2.6 / DeepSeek V4 Flash / Qwen) + OpenRouter (vision) + Telegram gateway + cronjob + lean-ctx token optimizer.
 >
 > **Semua model via OpenCode Go** — tidak butuh API key DeepSeek, OpenAI, atau provider lain terpisah.
 
@@ -36,7 +36,7 @@ Smart Router
   ├── Turn simpel    → Cheap model (Qwen3.5 Plus / Flash)
   └── Fallback       → Secondary model
         │
-RTK (Rust Token Killer) → compress terminal output 60-90%
+lean-ctx → compress shell output + file reads 89-99%
 ```
 
 ### Provider yang dibutuhkan
@@ -173,7 +173,7 @@ fallback_model:
 | **Quality floor** | Qwen3.5 Plus | Flash | Flash |
 | **Best for** | Daily chat, cron, scraping | Coding serius | Mixed heavy use |
 | **Routing threshold** | 200/35 | 160/28 (ketat) | 200/35 (longgar) |
-| **RTK benefit** | High | Medium | High |
+| **lean-ctx benefit** | High | Medium | High |
 
 ### Cara Pilih
 
@@ -238,8 +238,8 @@ Setup detail lengkap: [docs/11-multi-profile-telegram.md](docs/11-multi-profile-
 | 10 | [mengajarkan-hermes](docs/10-mengajarkan-hermes.md) | Feedback loop, agent makin pinter over time |
 | 11 | [multi-profile-telegram](docs/11-multi-profile-telegram.md) | Multi-bot Telegram per workflow (6 profil lengkap) |
 | 12 | [wsl-linux-commands](docs/12-wsl-linux-commands.md) | Cheat sheet WSL/Linux — navigasi, buka file, edit, troubleshoot |
-| 13 | [rtk-token-saver](docs/13-rtk-token-saver.md) | RTK install — hemat 60-90% token terminal |
-| 14 | [prefix-cache-optimization](docs/14-prefix-cache-optimization.md) | KV Prefix Cache (teknik DeepSeek Reasonix) — hemat 40-90% |
+| 13 | [lean-ctx-token-saver](docs/13-lean-ctx-token-saver.md) | lean-ctx install — hemat 89-99% token terminal + file reads |
+| 14 | [prefix-cache-optimization](docs/14-prefix-cache-optimization.md) | KV Prefix Cache + lean-ctx — hemat 70-90% |
 
 ---
 
@@ -333,9 +333,8 @@ cp examples/.env.example ~/.hermes/.env
 # 3. Install semua skills
 cp -r examples/skills/* ~/.hermes/skills/
 
-# 4. Install RTK (hemat token terminal 60-90%)
-curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | bash
-pip install rtk-hermes
+# 4. Install lean-ctx (hemat token terminal + file reads 89-99%)
+cargo install lean-ctx
 
 # 5. Setup Telegram
 hermes gateway setup
@@ -441,7 +440,7 @@ Kalau lo pake DeepSeek V4 Flash atau Qwen3.5 (cheap strategy):
 2. **SOUL.md explicit rules** — tulis sebagai `DO NOT: ...` dan `DO: ...`
 3. **Contoh output di setiap skill** — model murah butuh "template"
 4. **Reasoning effort = medium** default — `high` bikin thinking token meledak
-5. **RTK aktif** — compress verbose terminal output
+5. **lean-ctx aktif** — compress verbose terminal output + file reads
 6. **SOUL.md jangan sering diedit** — tiap edit = cache bust, biaya naik 1-2 turn
 
 ---
@@ -460,7 +459,7 @@ Jangan setup semuanya hari pertama — pake 1 minggu dulu, baru tambah fitur.
 
 1. **Honesty over confidence** — bilang "gak tau" daripada ngarang
 2. **Source-first** — setiap klaim ada sumber yang bisa dicek
-3. **Token efficiency** — routing, compression, RTK, prefix cache
+3. **Token efficiency** — routing, compression, lean-ctx, prefix cache
 4. **Never invent** — fakta, path, API → verify dulu
 5. **Explicit over implicit** — instructions harus diikuti model murah tanpa "infer"
 
@@ -471,7 +470,7 @@ Jangan setup semuanya hari pertama — pake 1 minggu dulu, baru tambah fitur.
 - [Hermes Agent docs](https://hermes-agent.nousresearch.com/docs/)
 - [GitHub repo](https://github.com/NousResearch/hermes-agent)
 - [OpenCode Go](https://opencode.ai/go) — subscription + model list
-- [RTK (Rust Token Killer)](https://github.com/rtk-ai/rtk)
+- [lean-ctx (Context Optimizer)](https://github.com/yvgude/lean-ctx)
 - [agentskills.io](https://agentskills.io/specification) — SKILL.md spec
 
 ---

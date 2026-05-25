@@ -1,18 +1,22 @@
 # ==============================================================================
 # Hermes Agent — config-prefix-cache.yaml
-# Strategy: BALANCED + Prefix Cache Optimized (prinsip dari DeepSeek Reasonix)
+# Strategy: BALANCED + Prefix Cache Optimized + lean-ctx
 #
 # Cocok untuk: heavy daily use, banyak session panjang, mau squeeze savings max
 # Cost estimasi: ~$8-12/bulan (lebih hemat dari balanced standard)
 #
 # Konsep:
-#   DeepSeek API otomatis cache prefix (system prompt) ke disk.
-#   Cache hit = 10x lebih murah dari normal input token.
-#   Untuk cache hit konsisten, prefix (SOUL.md + tools + skills) HARUS stabil.
-#   Config ini menjaga prefix tetap stabil selama mungkin.
+#   1. DeepSeek API otomatis cache prefix (system prompt) ke disk.
+#      Cache hit = 10x lebih murah dari normal input token.
+#      Untuk cache hit konsisten, prefix (SOUL.md + tools + skills) HARUS stabil.
+#
+#   2. lean-ctx compress shell output + file reads 89-99% sebelum masuk LLM.
+#      Cached re-reads turun ke ~13 token. Single Rust binary, zero deps.
+#
+#   Kombinasi keduanya = saving terbesar yang bisa dicapai.
 #
 # Sumber: https://api-docs.deepseek.com/guides/kv_cache
-#         https://github.com/esengine/DeepSeek-Reasonix (prinsip)
+#         https://github.com/yvgude/lean-ctx
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -21,6 +25,7 @@
 model:
   provider: opencode-go
   default: kimi-k2.6
+  api_mode: chat_completions
 
 # ------------------------------------------------------------------------------
 # FALLBACK
@@ -61,6 +66,9 @@ auxiliary:
   approval:
     provider: opencode-go
     model: deepseek-v4-flash
+  compression:
+    provider: opencode-go
+    model: qwen3.5-plus          # model untuk summarize history — murah, cukup
 
 # ------------------------------------------------------------------------------
 # COMPRESSION — KEY SETTING untuk prefix cache
@@ -83,8 +91,16 @@ auxiliary:
 compression:
   enabled: true
   threshold: 0.65                # ← KEY: lebih tinggi dari default 0.50
-  summary_provider: opencode-go
-  summary_model: qwen3.5-plus
+  target_ratio: 0.2
+  protect_last_n: 20
+
+# ------------------------------------------------------------------------------
+# PROMPT CACHING — explicit caching (untuk provider yang support)
+# ------------------------------------------------------------------------------
+# Cache TTL default 5m. DeepSeek auto-cache prefix.
+# Field ini untuk provider lain (Anthropic, dll).
+prompt_caching:
+  cache_ttl: 5m
 
 # ------------------------------------------------------------------------------
 # DELEGATION
@@ -167,9 +183,6 @@ quick_commands:
 # ------------------------------------------------------------------------------
 streaming:
   enabled: true
-  transport: edit
-  edit_interval: 0.3
-  buffer_threshold: 40
 
 # ------------------------------------------------------------------------------
 # PRIVACY
@@ -183,7 +196,7 @@ privacy:
 group_sessions_per_user: true
 
 # ==============================================================================
-# NOTES untuk PREFIX-CACHE OPTIMIZED strategy:
+# NOTES untuk PREFIX-CACHE + lean-ctx strategy:
 #
 # 1. SOUL.md HARUS STATIC (tidak ada {datetime}, {user}, {random}):
 #    → Tiap perubahan SOUL.md = cache bust = 1-2 turn pertama bayar full
@@ -203,10 +216,22 @@ group_sessions_per_user: true
 #    → Setiap /compress mengubah conversation format → cache miss untuk history
 #    → Dengan threshold 0.65, ini terjadi lebih jarang
 #
-# 5. Reasonix vs Hermes:
-#    Reasonix adalah agent terpisah yang dibangun khusus untuk prefix cache.
-#    Config ini mengadopsi PRINSIPNYA di Hermes. Tidak perlu install Reasonix.
-#    Hermes punya Skills, Memory, Telegram, Multi-profile yang Reasonix tidak punya.
+# 5. lean-ctx — WAJIB untuk stack ini:
+#    lean-ctx adalah Rust binary (zero dependencies) yang compress shell output
+#    + file reads sebelum sampai ke LLM. Hemat 89-99% token dari terminal.
+#    Cached re-reads turun ke ~13 token. Ini MELENGKAPI prefix cache:
+#      - prefix cache hemat token untuk system prompt yang berulang
+#      - lean-ctx hemat token untuk tool output yang besar
+#    Install: cargo install lean-ctx
+#             atau: curl -fsSL https://leanctx.com/install.sh | bash
+#    Repo: https://github.com/yvgude/lean-ctx
+#
+# 6. Stack optimal untuk cost minimum:
+#    lean-ctx (compress tool output) +
+#    prefix cache (threshold 0.65) +
+#    memory limit ketat (1500/1000) +
+#    SOUL.md static
+#    → Estimasi saving total: 70-90% dibanding default config
 #
 # Dokumentasi lengkap: docs/14-prefix-cache-optimization.md
 # ==============================================================================

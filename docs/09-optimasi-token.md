@@ -55,8 +55,13 @@ Estimasi penghematan: 30-60% kalau pattern lo banyak quick Q&A. **Belum gw verif
 compression:
   enabled: true
   threshold: 0.50          # compress saat 50% context limit
-  summary_provider: opencode-go
-  summary_model: qwen3.5-plus
+  target_ratio: 0.2
+  protect_last_n: 20
+
+auxiliary:
+  compression:
+    provider: opencode-go
+    model: qwen3.5-plus    # model untuk summarize history
 ```
 
 Yang di-compress: middle section conversation (yang lama). Awal session + recent turns dipreserve.
@@ -157,6 +162,9 @@ auxiliary:
   approval:
     provider: opencode-go
     model: qwen3.5-plus
+  compression:
+    provider: opencode-go
+    model: qwen3.5-plus               # summarize history — murah, cukup
 ```
 
 Auxiliary di-call **frequent**. Murah-cepat = win.
@@ -223,7 +231,15 @@ smart_model_routing:
 
 # Compression aggressive
 compression:
+  enabled: true
   threshold: 0.40
+  target_ratio: 0.2
+  protect_last_n: 20
+
+auxiliary:
+  compression:
+    provider: opencode-go
+    model: qwen3.5-plus
 
 # Auxiliary semua murah
 auxiliary:
